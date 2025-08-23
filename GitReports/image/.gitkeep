@@ -1,0 +1,14 @@
+# Pasta para recursos visuais
+
+Esta pasta contém as imagens utilizadas na aplicação:
+
+- `G.svg` - Logo da aplicação (elemento decorativo)
+
+## Nota sobre Acessibilidade
+
+O logo G.svg é tratado como elemento **decorativo** no código:
+- Utilizado como tag `<img>` semântica
+- Atributo `alt=""` (vazio) marca como decorativa
+- Leitores de tela **não** anunciam esta imagem
+- O foco permanece no texto "Gerador de Relatórios das Auditorias"
+- Abordagem mais semântica que background-image 
