@@ -282,7 +282,7 @@ function groupIssues(issues) {
     let groupKey;
     if (checklistType === 'declaracao') {
       // Para declaração, sempre usar o mesmo grupo
-      groupKey = 'Declaração de Acessibilidade';
+      groupKey = 'declaracao';
     } else {
       // Para outros tipos, usar o requirement ou o título padrão
       groupKey = requirementName || 
@@ -455,18 +455,15 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       color: #000;
       margin-left: -1.5rem;
       list-style-position: inside;
+      list-style: none;
     }
     
-    .evidence-item .github-link {
+    
+    .evidence-item p {
       margin: 1.5rem 0 1rem 0;
-      border-color: #1e3a8a;
-      color: #1e3a8a;
     }
-    .evidence-item .github-link:hover {
-      background-color: #1e3a8a;
-      color: #ffffff;
-      border-color: #1e3a8a;
-    }
+    
+
     .evidence-labels {
       font-size: 0.85em;
       display: inline-flex;
@@ -502,23 +499,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       white-space: nowrap;
       border: 0;
     }
-    .github-link {
-      display: inline-block;
-      margin-top: 0.75rem;
-      padding: 0.375rem 0.75rem;
-      border: 1px solid #1e3a8a;
-      border-radius: 0.375rem;
-      color: #1e3a8a;
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: all 0.15s ease-in-out;
-    }
-    .github-link:hover {
-      background-color: #1e3a8a;
-      color: #ffffff;
-      text-decoration: none;
-    }
+
     #checklist-10-aspetos {
       margin-top: 3.5rem !important;
     }
@@ -614,9 +595,9 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       </details>
     </nav>
 
-    <section id="introducao" class="mb-5 report-section">
-      <h2>Introdução</h2>
-      <p>O website <a href="${websiteUrl}" target="_blank">${websiteUrl}</a> <strong><span class="status-${getOverallProjectStatus(grouped) === 'passa' ? 'ok' : 'nok'}">${getOverallProjectStatus(grouped)}</span></strong> nos requisitos mínimos do Selo de Usabilidade e Acessibilidade.</p>
+         <section id="introducao" class="mb-5 report-section">
+       <h2 id="req-introducao">Introdução</h2>
+      <p>O website <a href="${websiteUrl}" target="_blank">${websiteUrl}</a> <strong><span class="status-${getOverallProjectStatus(grouped) === 'passa' ? 'ok' : 'nok'}"><span class="sr-only">etiqueta: </span>${getOverallProjectStatus(grouped)}</span></strong> nos requisitos mínimos do Selo de Usabilidade e Acessibilidade.</p>
       
       <table class="table table-bordered">
         <caption>Estado das avaliações efetuadas</caption>
@@ -629,11 +610,11 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
         <tbody>
           <tr>
             <td>Avaliação Automática</td>
-            <td><span class="status-${getOverallStatus(grouped.automatic)}">${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></td>
+            <td><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></td>
           </tr>
           <tr>
             <td>Avaliação Manual</td>
-            <td><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}">${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></td>
+            <td><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></td>
           </tr>
         </tbody>
       </table>
@@ -658,19 +639,19 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
           <tr>
             <td>10 aspetos</td>
             <td>${calculateConformance(grouped.chk10)}</td>
-            <td><span class="status-${chk10Status}">${chk10Status === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td><span class="status-${chk10Status}"><span class="sr-only">etiqueta: </span>${chk10Status === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
           ${hasIssues(grouped.conteudo) ? `
           <tr>
             <td>Conteúdo</td>
             <td>${calculateConformance(grouped.conteudo)}</td>
-            <td><span class="status-${conteudoStatus}">${conteudoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td><span class="status-${conteudoStatus}"><span class="sr-only">etiqueta: </span>${conteudoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
           ${hasIssues(grouped.transacao) ? `
           <tr>
             <td>Transação</td>
             <td>${calculateConformance(grouped.transacao)}</td>
-            <td><span class="status-${transacaoStatus}">${transacaoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td><span class="status-${transacaoStatus}"><span class="sr-only">etiqueta: </span>${transacaoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
         </tbody>
       </table>
@@ -680,36 +661,102 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       ${getOverallStatus(grouped.declaracao) === 'nok' ? '<p><strong>Nota:</strong> Tome nota que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo “Declaração de acessibilidade” para saber o que tem de corrigir.</p>' : ''}
     </section>
 
-    ${hasIssues(grouped.declaracao) ? `
-    <section id="declaracao" class="mb-5 report-section">
-      <h3>Declaração de Acessibilidade</h3>
-      <p><span class="status-${getOverallStatus(grouped.declaracao)}">${formatStatusForDisplay(getOverallStatus(grouped.declaracao))}</span></p>
-      ${generateRequirementsSection(grouped.declaracao, 'declaracao')}
-    </section>` : ''}
+              ${hasIssues(grouped.declaracao) ? `
+     <section id="declaracao" class="mb-5 report-section">
+       <h2 id="req-declaracao-declaracao-de-acessibilidade">Declaração de Acessibilidade</h2>
+       <p><span class="status-${getOverallStatus(grouped.declaracao)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.declaracao))}</span></p>
+       <p>Lista de evidências recolhidas:</p>
+       <ul class="evidence-list">
+         ${Object.values(grouped.declaracao).flat().map(issue => {
+           const labelTags = issue.labels.map(label => {
+             const labelName = label.name;
+             let labelClass = 'label-tag';
+             
+             if (labelName.includes('dec') || labelName.includes('a11y')) {
+               labelClass += ' label-declaracao';
+             } else if (labelName.toLowerCase().includes('melhoria')) {
+               labelClass += ' label-melhoria';
+             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+               labelClass += ' label-na';
+             } else if (labelName.toLowerCase() === 'ok') {
+               labelClass += ' label-ok';
+             } else if (labelName.toLowerCase() === 'nok') {
+               labelClass += ' label-nok';
+             } else {
+               labelClass += ' label-checklist';
+             }
+             
+             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+           }).join('');
+           
+           return `
+             <li class="evidence-item">
+               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <div class="evidence-labels">${labelTags}</div>
+               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+             </li>
+           `;
+         }).join('')}
+       </ul>
+     </section>` : ''}
 
-    ${hasIssues(grouped.automatic) ? `
-    <section id="avaliacao-automatica" class="mb-5 report-section">
-      <h3>Avaliação automática</h3>
-      <p><span class="status-${getOverallStatus(grouped.automatic)}">${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></p>
-      ${calculateDetailedStats(grouped.automatic, 'Avaliação automática')}
-      ${generateRequirementsSection(grouped.automatic, 'automatic')}
-    </section>` : ''}
+              ${hasIssues(grouped.automatic) ? `
+     <section id="avaliacao-automatica" class="mb-5 report-section">
+       <h2 id="req-automatic-avaliacao-automatica">Avaliação automática</h2>
+       <p><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></p>
+       ${calculateDetailedStats(grouped.automatic, 'Avaliação automática')}
+       <p>Lista de evidências recolhidas:</p>
+       <ul class="evidence-list">
+         ${Object.values(grouped.automatic).flat().map(issue => {
+           const labelTags = issue.labels.map(label => {
+             const labelName = label.name;
+             let labelClass = 'label-tag';
+             
+             if (labelName.includes('auto')) {
+               labelClass += ' label-auto';
+             } else if (labelName.toLowerCase().includes('melhoria')) {
+               labelClass += ' label-melhoria';
+             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+               labelClass += ' label-na';
+             } else if (labelName.toLowerCase() === 'ok') {
+               labelClass += ' label-ok';
+             } else if (labelName.toLowerCase() === 'nok') {
+               labelClass += ' label-nok';
+             } else if (labelName.match(/R \d+\.\d+/)) {
+               labelClass += ' label-requisito';
+             } else {
+               labelClass += ' label-checklist';
+             }
+             
+             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+           }).join('');
+           
+           return `
+             <li class="evidence-item">
+               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <div class="evidence-labels">${labelTags}</div>
+               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+             </li>
+           `;
+         }).join('')}
+       </ul>
+     </section>` : ''}
 
-    ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? `
-    <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
-      <h2>Avaliação manual</h2>
-      <p><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}">${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></p>
-      <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
-      <ul>
-        ${hasIssues(grouped.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
-        ${hasIssues(grouped.conteudo) ? '<li>checklist <strong>Conteúdo</strong> (se candidato a Selo Bronze);</li>' : ''}
-        ${hasIssues(grouped.transacao) ? '<li>checklist <strong>Transação</strong> (se candidato a Selo Prata).</li>' : ''}
-      </ul>
+         ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? `
+     <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
+       <h2 id="req-avaliacao-manual">Avaliação manual</h2>
+       <p><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></p>
+       <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
+       <ul>
+         ${hasIssues(grouped.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
+         ${hasIssues(grouped.conteudo) ? '<li>checklist <strong>Conteúdo</strong> (se candidato a Selo Bronze);</li>' : ''}
+         ${hasIssues(grouped.transacao) ? '<li>checklist <strong>Transação</strong> (se candidato a Selo Prata).</li>' : ''}
+       </ul>
 
       ${hasIssues(grouped.chk10) ? `
       <div class="checklist-section">
         <h3 id="checklist-10-aspetos">Checklist 10 aspetos</h3>
-        <p><span class="status-${getOverallStatus(grouped.chk10)}">${formatStatusForDisplay(getOverallStatus(grouped.chk10))}</span></p>
+        <p><span class="status-${getOverallStatus(grouped.chk10)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.chk10))}</span></p>
         ${calculateDetailedStats(grouped.chk10, 'Checklist 10 aspetos')}
         ${generateRequirementsSection(grouped.chk10, 'chk10')}
       </div>` : ''}
@@ -717,7 +764,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       ${hasIssues(grouped.conteudo) ? `
       <div class="checklist-section">
         <h3 id="checklist-conteudo">Checklist Conteúdo</h3>
-        <p><span class="status-${getOverallStatus(grouped.conteudo)}">${formatStatusForDisplay(getOverallStatus(grouped.conteudo))}</span></p>
+        <p><span class="status-${getOverallStatus(grouped.conteudo)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.conteudo))}</span></p>
         ${calculateDetailedStats(grouped.conteudo, 'Checklist Conteúdo')}
         ${generateRequirementsSection(grouped.conteudo, 'conteudo')}
       </div>` : ''}
@@ -725,20 +772,20 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       ${hasIssues(grouped.transacao) ? `
       <div class="checklist-section">
         <h3 id="checklist-transacao">Checklist Transação</h3>
-        <p><span class="status-${getOverallStatus(grouped.transacao)}">${formatStatusForDisplay(getOverallStatus(grouped.transacao))}</span></p>
+        <p><span class="status-${getOverallStatus(grouped.transacao)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.transacao))}</span></p>
         ${calculateDetailedStats(grouped.transacao, 'Checklist Transação')}
         ${generateRequirementsSection(grouped.transacao, 'transacao')}
       </div>` : ''}
     </section>` : ''}
 
-    ${hasIssues(grouped.outras) ? `
-    <section id="outras-violacoes" class="mb-5 report-section">
-      <h2>Outras violações</h2>
-      ${generateRequirementsSection(grouped.outras, 'outras')}
-    </section>` : ''}
+         ${hasIssues(grouped.outras) ? `
+     <section id="outras-violacoes" class="mb-5 report-section">
+       <h2 id="req-outras-violacoes">Outras violações</h2>
+       ${generateRequirementsSection(grouped.outras, 'outras')}
+     </section>` : ''}
 
-    <section id="etiquetas" class="mb-5 report-section">
-      <h2>Significado das etiquetas utilizadas</h2>
+         <section id="etiquetas" class="mb-5 report-section">
+       <h2 id="req-etiquetas">Significado das etiquetas utilizadas</h2>
       <ul>
                                    <li><span class="label-tag label-ok"><span class="sr-only">etiqueta: </span>OK</span> - status OK</li>
                                    <li><span class="label-tag label-melhoria"><span class="sr-only">etiqueta: </span>melhoria</span> - status OK, mas pode melhorar</li>
@@ -800,12 +847,18 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
     
     const overallStatus = getRequirementStatus(issues);
     const displayTitle = getRequirementTitle(requirement, checklistType);
-    // Use h3 for "outras" to maintain proper heading hierarchy, h4 for others  
-    const headingTag = checklistType === 'outras' ? 'h3' : 'h4';
-    html += `
-      <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${displayTitle}</${headingTag}>
-      <div class="requirement-content">
-                                   ${(requirement !== 'Declaração de Acessibilidade') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(overallStatus)}</span></p>` : ''}
+    // Use h4 for all requirement titles to maintain proper heading hierarchy
+    const headingTag = 'h4';
+    
+    // Only add the heading if there's a title to display
+    if (displayTitle) {
+      html += `
+        <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${displayTitle}</${headingTag}>
+      `;
+    }
+    
+    html += `<div class="requirement-content">
+                                   ${(requirement !== 'declaracao') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(overallStatus)}</span></p>` : ''}
         <p>Lista de evidências recolhidas:</p>
     `;
     
@@ -844,16 +897,9 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
       
       html += `
         <li class="evidence-item">
-          ${issue.title}<br>
-          <div class="evidence-labels">${labelTags}</div><br>
-          <a 
-            class="github-link" 
-            href="${issue.html_url}" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            aria-label="${issue.title && issue.title.includes(' - ') ? issue.title.split(' - ').slice(1).join(' - ') : issue.title}">
-            Consultar detalhe da evidência <span class="sr-only">(${issue.title})</span> (abre no GitHub)
-          </a>
+          <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+          <div class="evidence-labels">${labelTags}</div>
+          <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
         </li>
       `;
     });
@@ -1144,6 +1190,16 @@ function getRequirementTitle(requirement, checklistType) {
     return automaticRequirements[requirement];
   }
   
+  // Special cases to avoid duplication
+  if (checklistType === 'declaracao') {
+    return 'Declaração de Acessibilidade';
+  }
+  
+  // Special case for "Outras violações" to avoid duplication with section title
+  if (checklistType === 'outras' && requirement === 'Outras violações') {
+    return '';
+  }
+  
   return requirement;
 }
 
@@ -1155,4 +1211,4 @@ function downloadFile(content, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-} 
+}
