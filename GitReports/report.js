@@ -2,126 +2,60 @@
 
 const { GITHUB_TOKEN, GITHUB_OWNER } = window.APP_CONFIG;
 
-document.getElementById('fetchReposBtn').addEventListener('click', fetchRepositories);
 document.getElementById('generateReportBtn').addEventListener('click', generateReport);
 
 // Auto-load repositories when page loads
 document.addEventListener('DOMContentLoaded', function() {
   fetchRepositories();
-  
-  // Evitar layout shift quando mensagem desaparece durante interação com select
-  const repoSelect = document.getElementById('repoSelect');
-  const fetchStatusDiv = document.getElementById('fetch-status');
-  
-  repoSelect.addEventListener('focus', function() {
-    if (fetchStatusDiv.classList.contains('fetch-status-visible')) {
-      fetchStatusDiv.classList.add('fade-out');
-      setTimeout(() => {
-        fetchStatusDiv.classList.remove('fetch-status-visible');
-        fetchStatusDiv.classList.add('fetch-status-hidden');
-        fetchStatusDiv.classList.remove('fade-out');
-      }, 300);
-    }
-  });
-
-  repoSelect.addEventListener('click', function() {
-    if (fetchStatusDiv.classList.contains('fetch-status-visible')) {
-      fetchStatusDiv.classList.add('fade-out');
-      setTimeout(() => {
-        fetchStatusDiv.classList.remove('fetch-status-visible');
-        fetchStatusDiv.classList.add('fetch-status-hidden');
-        fetchStatusDiv.classList.remove('fade-out');
-      }, 300);
-    }
-  });
 });
 
 async function fetchRepositories() {
-  const statusDiv = document.getElementById('status');
-  const fetchStatusDiv = document.getElementById('fetch-status');
   const repoSelect = document.getElementById('repoSelect');
   const generateBtn = document.getElementById('generateReportBtn');
-  const fetchBtn = document.getElementById('fetchReposBtn');
   
-  repoSelect.innerHTML = '<option value="">Escolha o repositório para gerar o relatório</option>';
-  repoSelect.disabled = true;
-  generateBtn.disabled = true;
-  generateBtn.classList.add('disabled');
-  
-  // Add loading state
-  fetchBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>A carregar repositórios...';
-  fetchBtn.disabled = true;
-  
-  // Show fetch status below the button
-  fetchStatusDiv.classList.remove('fetch-status-hidden');
-  fetchStatusDiv.classList.add('fetch-status-visible');
-  fetchStatusDiv.className = 'status-message status-info';
-  fetchStatusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A procurar repositórios...';
-  fetchStatusDiv.setAttribute('aria-live', 'polite');
-  
-  // Clear main status
-  statusDiv.innerHTML = '';
-  statusDiv.className = 'status-message';
-    
   try {
-    const url = `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100`;
+    // Show loading state
+    repoSelect.innerHTML = '<option value="">A carregar repositórios...</option>';
+    repoSelect.disabled = true;
+    generateBtn.disabled = true;
+    generateBtn.classList.add('disabled');
+    
+    const url = `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=name`;
     const response = await fetch(url, {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
     });
-    if (!response.ok) throw new Error('Falha ao procurar repositórios.');
-    const repos = await response.json();
-    if (!Array.isArray(repos) || repos.length === 0) {
-      fetchStatusDiv.className = 'status-message status-error';
-      fetchStatusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Nenhum repositório encontrado.';
-      fetchStatusDiv.setAttribute('aria-live', 'assertive');
-      return;
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    // Filter only repositories that start with "Report_" or "reports_" (case-insensitive)
+    
+    const repos = await response.json();
+    
+    // Filter repositories that start with "Report_" or "reports_" (case insensitive)
     const reportRepos = repos.filter(repo => 
       repo.name.toLowerCase().startsWith('report_') || 
       repo.name.toLowerCase().startsWith('reports_')
     );
     
-    if (reportRepos.length === 0) {
-      fetchStatusDiv.className = 'status-message status-error';
-      fetchStatusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Nenhum repositório de avaliação encontrado (Report_* ou reports_*).';
-      fetchStatusDiv.setAttribute('aria-live', 'assertive');
-      return;
-    }
-    
+    // Populate select with filtered repositories
+    let options = '<option value="">Escolha o repositório para gerar o relatório</option>';
     reportRepos.forEach(repo => {
-      const option = document.createElement('option');
-      option.value = repo.name;
-      option.text = repo.name;
-      repoSelect.appendChild(option);
+      options += `<option value="${repo.name}">${repo.name}</option>`;
     });
+    
+    repoSelect.innerHTML = options;
     repoSelect.disabled = false;
     generateBtn.disabled = false;
     generateBtn.classList.remove('disabled');
     
-    fetchStatusDiv.className = 'status-message status-success';
-    fetchStatusDiv.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> Repositórios atualizados!`;
-    fetchStatusDiv.setAttribute('aria-live', 'polite');
-    
-    // Fade out após 5 segundos e ocultar após 6 segundos (mais tempo para interação)
-    setTimeout(() => {
-      fetchStatusDiv.classList.add('fade-out');
-    }, 5000);
-    
-    setTimeout(() => {
-      fetchStatusDiv.classList.remove('fetch-status-visible');
-      fetchStatusDiv.classList.add('fetch-status-hidden');
-      fetchStatusDiv.classList.remove('fade-out');
-    }, 6000);
-  } catch (e) {
-    fetchStatusDiv.className = 'status-message status-error';
-    fetchStatusDiv.innerHTML = `<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Erro: ${e.message}`;
-    fetchStatusDiv.setAttribute('aria-live', 'assertive');
-  } finally {
-    fetchBtn.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Atualizar repositórios<span class="sr-only">. Clique para atualizar a lista de repositórios disponíveis</span>';
-    fetchBtn.disabled = false;
+  } catch (error) {
+    console.error('Erro ao carregar repositórios:', error);
+    repoSelect.innerHTML = '<option value="">Erro ao carregar repositórios</option>';
+    repoSelect.disabled = false;
   }
 }
+
+
 
 async function fetchReadmeInfo(repoName) {
   try {
@@ -193,7 +127,7 @@ async function generateReport() {
   try {
     // Fetch both issues and README in parallel
     const [issuesResponse, readmeInfo] = await Promise.all([
-      fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=all&per_page=100`, {
+      fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=open&per_page=100`, {
         headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
       }),
       fetchReadmeInfo(repoName)
@@ -240,6 +174,11 @@ function groupIssues(issues) {
   };
 
   issues.forEach(issue => {
+    // Skip issues with "Ok" label - they should not appear in the report
+    if (issue.labels.some(l => l.name.toLowerCase().trim() === 'ok')) {
+      return;
+    }
+
     // Determine checklist type
     let checklistType = 'outras';
     if (issue.labels.some(l => l.name === 'chk 10 web' || l.name === 'chk10')) checklistType = 'chk10';
@@ -543,14 +482,13 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
 </head>
 <body>
   <a href="#conteudo-principal" class="skip-link visually-hidden-focusable">Saltar para o conteúdo principal</a>
-  <div class="container mt-4" id="conteudo-principal" role="main">
+  <div class="container mt-4" id="conteudo-principal">
     <header class="mb-4">
       <h1>Relatório Avaliação da Candidatura da ${organization}</h1>
     </header>
 
     <section class="mb-4">
       <ul>
-        <li>Consulte aqui: Relatório de Auditoria candidatura a ${sealTypeShort} de ${ownerShort}.</li>
         <li>Avaliação feita por: AMA. I.P. - Núcleo de Experiência e Usabilidade</li>
         <li>Data: ${reportMonthYear}</li>
         <li>${owner}</li>
@@ -803,7 +741,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
 
   </div>
 
-  <footer class="mt-5 pt-4 border-top text-center text-muted" role="contentinfo">
+  <footer class="mt-5 pt-4 border-top text-center text-muted">
     <div class="container">
       <p>© 2025 AMA - Agência para a Modernização Administrativa, I.P. Todos os Direitos Reservados.</p>
       <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
@@ -1041,7 +979,7 @@ function calculateDetailedStats(section, checklistName) {
       <li><strong>${checklistName}</strong>: ${percentage}% (${passedRequirements}/${applicableRequirements})
         <ul>
           <li>Requisitos avaliados: ${requirements.length} (${naCount > 0 ? `${naCount} N/A excluído${naCount > 1 ? 's' : ''}, ` : ''}${applicableRequirements} aplicáveis)</li>
-          <li>Requisitos OK: ${passedRequirements}</li>
+          ${passedRequirements > 0 ? `<li>Requisitos OK: ${passedRequirements}</li>` : ''}
           <li>Requisitos NOK: ${nokCount}</li>
           ${naCount > 0 ? `<li>Requisitos N/A: ${naCount}</li>` : ''}
         </ul>

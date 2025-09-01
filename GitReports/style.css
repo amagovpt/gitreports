@@ -89,6 +89,7 @@ body {
   padding: 0;
   padding-bottom: 80px; /* Espaço para o footer */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   line-height: 1.6;
@@ -128,13 +129,15 @@ body {
 .main-container {
   width: 100%;
   max-width: 500px;
-  padding: var(--spacing-lg);
+  padding: 0;
 }
 
 .card {
   background: var(--white);
   border-radius: 0px !important;
   box-shadow: var(--shadow-lg);
+  border-top: 0px !important;
+  box-shadow: none !important;
   border: none;
   padding: var(--spacing-3xl) var(--spacing-2xl);
 }
@@ -146,7 +149,12 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-2xl);
+  background: var(--white);
+  padding: var(--spacing-3xl) var(--spacing-2xl);
+  border-radius: 0px !important;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px;
 }
 
 .logo {
@@ -168,6 +176,8 @@ body {
   font-size: var(--font-size-large);
   font-weight: 600;
   margin-bottom: var(--spacing-xs);
+  word-wrap: break-word;
+  hyphens: auto;
   line-height: 1.2;
 }
 
@@ -553,4 +563,4 @@ body {
   .btn {
     border: 1px solid black;
   }
-} 
+}
