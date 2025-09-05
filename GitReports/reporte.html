@@ -74,10 +74,23 @@
             disabled
             aria-describedby="generate-report-desc">
             <i class="bi bi-download" aria-hidden="true"></i>
-            Gerar e descarregar o relatório
+            Relatório Auditoria
           </button>
           <div id="generate-report-desc" class="sr-only">
-            Gera um relatório de acessibilidade baseado nas issues do repositório selecionado
+            Gera um relatório de auditoria baseado nas issues do repositório selecionado (exclui issues OK)
+          </div>
+          
+          <button 
+            id="generateDeclarationBtn" 
+            class="btn btn-secondary mt-2" 
+            type="button"
+            disabled
+            aria-describedby="generate-declaration-desc">
+            <i class="bi bi-download" aria-hidden="true"></i>
+            Relatório para anexar à Declaração (contém OKs)
+          </button>
+          <div id="generate-declaration-desc" class="sr-only">
+            Gera um relatório completo incluindo issues OK para anexar à Declaração de Acessibilidade
           </div>
         </div>
       </section>
@@ -95,7 +108,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    Copyright © 2025 <strong>Agência para a Modernização Administrativa</strong> Todos os Direitos Reservados
+    Copyright © 2025 <strong>Agência para a Reforma Tecnológica do Estado, I.P.</strong> Todos os Direitos Reservados
   </footer>
 
   <!-- Scripts -->
