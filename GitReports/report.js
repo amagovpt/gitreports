@@ -287,7 +287,8 @@ function groupIssues(issues, filterOkIssues = true) {
 
   issues.forEach(issue => {
     // Skip issues with no labels or with "Ok" label (if filterOkIssues is true)
-    if (issue.labels.length === 0 || (filterOkIssues && issue.labels.some(l => l.name.toLowerCase().trim() === 'ok'))) {
+    // Não filtrar issues com label 'ok' para a declaração
+    if (issue.labels.length === 0 || (filterOkIssues && issue.labels.some(l => l.name.toLowerCase().trim() === 'ok') && !issue.labels.some(l => l.name === 'declaracao' || l.name === 'dec a11y'))) {
       return;
     }
 
@@ -1149,9 +1150,13 @@ function calculateDetailedStats(section, checklistName) {
   // Se não há requisitos aplicáveis, mostrar 0%
   const percentage = applicableRequirements > 0 ? ((passedRequirements / applicableRequirements) * 100).toFixed(1) : '0.0';
 
-
-  // Para outras checklists, mostrar o nível de conformidade
-  return `
+  // Para avaliação automática, não mostrar nenhuma informação sobre requisitos
+  if (checklistName === 'Avaliação automática') {
+    return ``;
+    
+  } else {
+    // Para outras checklists, mostrar o nível de conformidade
+    return `
     <p><strong>Nível de conformidade:</strong></p>
     <ul>
       <li><strong>${checklistName}</strong>: ${percentage}% (${passedRequirements}/${applicableRequirements})
@@ -1163,7 +1168,8 @@ function calculateDetailedStats(section, checklistName) {
         </ul>
       </li>
     </ul>
-  `;
+    `;
+  }
 }
 
 function hasIssues(section) {
