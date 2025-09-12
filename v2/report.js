@@ -621,8 +621,11 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         <li>URL: <a href="${websiteUrl}" target="_blank" rel="noopener noreferrer">${websiteUrl}</a></li>
         <li>${owner}</li>
         <li>${sealType}</li>
+          <li>Progresso (% de requisitos auditados): ${calculateProgress(dataForCalculation).percentage}%</li>
       </ul>
     </section>
+
+
 
     <nav class="mb-4 report-section" aria-label="Índice">
       <details open>
@@ -676,11 +679,11 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         <tbody>
           <tr>
             <td>Avaliação Automática</td>
-            <td><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.automatic), grouped.automatic)}</span></td>
+            <td><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(grouped.automatic))}</span></td>
           </tr>
           <tr>
             <td>Avaliação Manual</td>
-            <td><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}), {...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}</span></td>
+            <td><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span>${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) === 'ok' ? getImprovementText({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) : ''}</td>
           </tr>
         </tbody>
       </table>
@@ -724,13 +727,13 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       
       ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? '<p><strong>Nota:</strong> para passar os requisitos do Selo é necessário alcançar um nível de conformidade superior ou igual a 75% em cada uma das 3 checklists.</p>' : ''}
       
-      ${getOverallStatus(dataForCalculation.declaracao) === 'nok' ? '<p><strong>Nota:</strong> Verificámos também que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo "Declaração de acessibilidade" para saber o que tem de corrigir.</p>' : ''}
+      ${getOverallStatus(dataForCalculation.declaracao) === 'nok' ? '<p>Verificámos também que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo "Declaração de acessibilidade" para saber o que tem de corrigir.</p>' : ''}
     </section>
 
               ${hasIssues(dataForCalculation.declaracao) ? `
      <section id="declaracao" class="mb-5 report-section">
        <h2 id="req-declaracao-declaracao-de-acessibilidade">Declaração de Acessibilidade</h2>
-        <p><span class="status-${getOverallStatus(dataForCalculation.declaracao)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(dataForCalculation.declaracao), dataForCalculation.declaracao)}</span></p>
+        <p><span class="status-${getOverallStatus(dataForCalculation.declaracao)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.declaracao))}</span></p>
        <p>De acordo com o <a href="https://www.acessibilidade.gov.pt/blogue/categoria-acessibilidade/dl-n-o-83-2018-acessibilidade-dos-sitios-web-e-das-aplicacoes-moveis/#n8" target="_blank" rel="noopener noreferrer">artigo 8º do DL n.º 83/2018</a>, todos os sítios web e todas as aplicações móveis têm de ostentar uma Declaração de Acessibilidade. A Declaração é o documento na qual a organização evidencia o trabalho levado a efeito para tornar os seus conteúdos e serviços digitais mais acessíveis, disponibilizando ainda contactos para ajuda adicional.</p>
       
        <p>Lista de evidências recolhidas:</p>
@@ -763,7 +766,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
              <li class="evidence-item">
                <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
                <div class="evidence-labels">${labelTags}</div>
-               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+               ${processIssueContent(issue)}
              </li>
            `;
          }).join('')}
@@ -773,7 +776,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
               ${hasIssues(grouped.automatic) ? `
      <section id="avaliacao-automatica" class="mb-5 report-section">
        <h2 id="req-automatic-avaliacao-automatica">Avaliação automática</h2>
-       <p><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(grouped.automatic), grouped.automatic)}</span></p>
+       <p><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(grouped.automatic))}</span></p>
        <p>Para a produção das evidências do presente capítulo, foram utilizadas ferramentas automatizadas de avaliação de requisitos de acessibilidade de acordo com a norma WCAG 2.1 'AA'. A amostra em análise pelas ferramentas é composta pela Homepage mais todas as páginas diretamente hiperligadas por ela, pertencentes ao domínio.</p>
        ${calculateDetailedStats(dataForCalculation.automatic, 'Avaliação automática')}
        <p>Lista de evidências recolhidas:</p>
@@ -808,7 +811,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
              <li class="evidence-item">
                <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
                <div class="evidence-labels">${labelTags}</div>
-               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+               ${processIssueContent(issue)}
              </li>
            `;
          }).join('')}
@@ -818,7 +821,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
          ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? `
      <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
        <h2 id="req-avaliacao-manual">Avaliação manual</h2>
-       <p><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}), {...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}</span></p>
+       <p><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span>${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) === 'ok' ? getImprovementText({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) : ''}</p>
        <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
        <ul>
          ${hasIssues(dataForCalculation.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
@@ -830,7 +833,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       ${hasIssues(dataForCalculation.chk10) ? `
       <div class="checklist-section">
         <h3 id="checklist-10-aspetos">Checklist 10 aspetos</h3>
-        <p><span class="status-${getOverallStatus(dataForCalculation.chk10)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(dataForCalculation.chk10), dataForCalculation.chk10)}</span></p>
+        <p><span class="status-${getOverallStatus(dataForCalculation.chk10)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.chk10))}</span>${getOverallStatus(dataForCalculation.chk10) === 'ok' ? getImprovementText(dataForCalculation.chk10) : ''}</p>
         ${calculateDetailedStats(dataForCalculation.chk10, 'Checklist 10 aspetos')}
         ${generateRequirementsSection(grouped.chk10, 'chk10')}
       </div>` : ''}
@@ -838,7 +841,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       ${hasIssues(dataForCalculation.conteudo) ? `
       <div class="checklist-section">
         <h3 id="checklist-conteudo">Checklist Conteúdo</h3>
-        <p><span class="status-${getOverallStatus(dataForCalculation.conteudo)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(dataForCalculation.conteudo), dataForCalculation.conteudo)}</span></p>
+        <p><span class="status-${getOverallStatus(dataForCalculation.conteudo)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.conteudo))}</span>${getOverallStatus(dataForCalculation.conteudo) === 'ok' ? getImprovementText(dataForCalculation.conteudo) : ''}</p>
         ${calculateDetailedStats(dataForCalculation.conteudo, 'Checklist Conteúdo')}
         ${generateRequirementsSection(grouped.conteudo, 'conteudo')}
       </div>` : ''}
@@ -846,7 +849,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       ${hasIssues(dataForCalculation.transacao) ? `
       <div class="checklist-section">
         <h3 id="checklist-transacao">Checklist Transação</h3>
-        <p><span class="status-${getOverallStatus(dataForCalculation.transacao)}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(getOverallStatus(dataForCalculation.transacao), dataForCalculation.transacao)}</span></p>
+        <p><span class="status-${getOverallStatus(dataForCalculation.transacao)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.transacao))}</span>${getOverallStatus(dataForCalculation.transacao) === 'ok' ? getImprovementText(dataForCalculation.transacao) : ''}</p>
         ${calculateDetailedStats(dataForCalculation.transacao, 'Checklist Transação')}
         ${generateRequirementsSection(grouped.transacao, 'transacao')}
       </div>` : ''}
@@ -940,7 +943,7 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
     }
     
     html += `<div class="requirement-content">
-        ${(requirement !== 'declaracao') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(overallStatus, issues)}</span></p>` : ''}
+        ${(requirement !== 'declaracao') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForRequirementDisplay(overallStatus, issues)}</span>${overallStatus === 'ok' ? getImprovementText(issues) : ''}</p>` : ''}
         <p>Lista de evidências recolhidas:</p>
     `;
     
@@ -987,7 +990,7 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
               <li class="evidence-item">
                 <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
                 <div class="evidence-labels">${labelTags}</div>
-                <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+                ${processIssueContent(issue)}
               </li>
             `;
           }
@@ -1059,6 +1062,18 @@ function countMelhorias(section) {
   if (!section) return 0;
   
   let count = 0;
+  
+  // Se section é um array (lista de issues), contar diretamente
+  if (Array.isArray(section)) {
+    for (const issue of section) {
+      if (issue && issue.status === 'melhoria') {
+        count++;
+      }
+    }
+    return count;
+  }
+  
+  // Se section é um objeto (estrutura de seção), iterar pelos requisitos
   const requirements = Object.keys(section);
   
   for (const req of requirements) {
@@ -1076,13 +1091,39 @@ function countMelhorias(section) {
   return count;
 }
 
-// Helper function to format status for display
+// Helper function to format status for display at checklist level (no improvements text)
+function formatStatusForChecklistDisplay(status) {
+  if (status === 'na') return 'N/A';
+  if (status === 'ok' || status === 'melhoria') {
+    return 'OK';
+  }
+  return status.toUpperCase();
+}
+
+// Helper function to format status for display at requirement level (with improvements text)
+function formatStatusForRequirementDisplay(status, section) {
+  if (status === 'na') return 'N/A';
+  if (status === 'ok' || status === 'melhoria') {
+    return 'OK';
+  }
+  return status.toUpperCase();
+}
+
+// Helper function to get improvement text for requirements
+function getImprovementText(section) {
+  const melhorias = section && typeof section === 'object' ? countMelhorias(section) : 0;
+  if (melhorias > 0) {
+    const melhoriaText = melhorias === 1 ? 'melhoria' : 'melhorias';
+    return ` (no entanto contém ${melhorias} ${melhoriaText} que se recomenda efetuar)`;
+  }
+  return '';
+}
+
+// Helper function to format status for display (legacy - keeping for compatibility)
 function formatStatusForDisplay(status, section) {
   if (status === 'na') return 'N/A';
   if (status === 'ok' || status === 'melhoria') {
-    // Verificar se section existe e é um objeto antes de contar melhorias
-    const melhorias = section && typeof section === 'object' ? countMelhorias(section) : 0;
-    return melhorias > 0 ? `OK (${melhorias} melhorias)` : 'OK';
+    return 'OK';
   }
   return status.toUpperCase();
 }
@@ -1328,6 +1369,89 @@ function getRequirementTitle(requirement, checklistType) {
   }
   
   return requirement;
+}
+
+function processIssueContent(issue) {
+  if (!issue.body) return '';
+  
+  let content = issue.body;
+  
+  // Processar tags HTML de imagem ANTES de processar markdown
+  // Capturar tags <img> com diversos atributos
+  const htmlImageRegex = /<img\s+[^>]*src=["']([^"']+)["'][^>]*\/?>/gi;
+  const htmlImages = [];
+  let imageCounter = 0;
+  
+  // Substituir temporariamente as imagens HTML por placeholders que o Marked.js não vai tocar
+  content = content.replace(htmlImageRegex, (match, src) => {
+    // Extrair outros atributos como alt, width, height
+    const altMatch = match.match(/alt=["']([^"']*)["']/i);
+    const alt = altMatch ? altMatch[1] : 'Imagem';
+    
+    const imageHtml = `<img src="${src}" alt="${alt}" class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
+    htmlImages.push(imageHtml);
+    // Usar um formato de placeholder mais segúro que não seja afetado pelo markdown
+    return `\n\n<!-- IMAGE_PLACEHOLDER_${imageCounter++} -->\n\n`;
+  });
+  
+  // Configurar marked.js com opções personalizadas
+  marked.setOptions({
+    breaks: true,  // Converter quebras de linha simples em <br>
+    gfm: true,     // GitHub Flavored Markdown
+    sanitize: false, // Não sanitizar HTML (permitir imagens)
+    headerIds: false, // Não gerar IDs nos headers
+    mangle: false  // Não modificar URLs
+  });
+  
+  // Processar markdown para HTML usando marked.js
+  content = marked.parse(content);
+  
+  // Restaurar as imagens HTML processadas (procurar por comentários HTML)
+  htmlImages.forEach((imageHtml, index) => {
+    const placeholder = `<!-- IMAGE_PLACEHOLDER_${index} -->`;
+    content = content.replace(placeholder, imageHtml);
+    // Também verificar se ficou dentro de tags <p>
+    const wrappedPlaceholder = `<p>${placeholder}</p>`;
+    content = content.replace(wrappedPlaceholder, imageHtml);
+  });
+  
+  // Aplicar classe CSS personalizada às imagens markdown (que foram processadas pelo marked.js)
+  content = content.replace(/<img([^>]*)>/g, (match, attributes) => {
+    // Só adicionar a classe se não tiver já
+    if (!attributes.includes('class="evidence-image"')) {
+      return `<img${attributes} class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
+    }
+    return match;
+  });
+  
+  // Verificar se ainda existem placeholders não substituídos e removê-los
+  content = content.replace(/<!-- IMAGE_PLACEHOLDER_\d+ -->/g, '');
+  
+  return `<div class="issue-content">${content}</div>`;
+}
+
+function calculateProgress(dataForCalculation) {
+  const allSections = {...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao};
+  const requirements = Object.keys(allSections);
+  const totalRequirements = requirements.length;
+  
+  if (totalRequirements === 0) return { percentage: 0, audited: 0, total: 0 };
+  
+  let auditedRequirements = 0;
+  requirements.forEach(req => {
+    const status = getRequirementStatus(allSections[req]);
+    if (status !== 'na') {
+      auditedRequirements++;
+    }
+  });
+  
+  const percentage = totalRequirements > 0 ? Math.round((auditedRequirements / totalRequirements) * 100) : 0;
+  
+  return {
+    percentage: percentage,
+    audited: auditedRequirements,
+    total: totalRequirements
+  };
 }
 
 function downloadFile(content, filename) {
