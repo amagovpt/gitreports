@@ -14,52 +14,41 @@
 </head>
 <body>
   <!-- Skip to main content link for screen readers -->
-  <a href="#main-content" class="skip-link">Saltar para o conteúdo principal</a>
+  <a href="#main" class="skip-link">Saltar para o conteúdo principal</a>
+
+  <!-- Logo and Header -->
+  <header class="header-container">
+    <img src="image/G.svg" alt="" class="logo" width="100" height="100">
+    
+    <div class="title-container">
+      <h1 class="title">
+        Gerador de Relatórios das Auditorias
+      </h1>
+      
+      <p class="subtitle">
+        Testes de acessibilidade - GitHub
+      </p>
+    </div>
+  </header>
 
   <div class="main-container">
-    <main id="main-content" class="card" role="main">
-      <!-- Logo and Header -->
-      <header class="header-container">
-        <img src="image/G.svg" alt="" class="logo" width="100" height="100">
-        
-        <div class="title-container">
-          <h1 class="title">
-            Gerador de Relatórios das Auditorias
-          </h1>
-          
-          <p class="subtitle">
-            Testes de acessibilidade - GitHub
-          </p>
-        </div>
-      </header>
+    <main id="main" class="card">
 
       <!-- Repository Management Section -->
-      <section aria-label="Gestão de repositórios">
+      <section>
         <div class="form-section">
-          <button 
-            id="fetchReposBtn" 
-            class="btn btn-secondary" 
-            type="button"
-            disabled>
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            A carregar repositórios...
-            <span class="sr-only">. Clique para atualizar a lista de repositórios disponíveis</span>
-          </button>
-          <!-- Status específico para carregamento de repositórios -->
-          <div 
-            id="fetch-status" 
-            class="status-message status-info fetch-status-hidden"
-            role="status" 
-            aria-live="polite">
+          <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle" aria-hidden="true" aria-label="aviso"></i>
+            Aqui estamos constantemente a fazer relatórios!<span aria-label="sorriso">😊</span> Antes de abrir a lista abaixo faça um "refresh da presente página" para garantir que está atualizada.
           </div>
         </div>
       </section>
 
       <!-- Repository Selection Section -->
-      <section aria-label="Seleção de repositório">
+      <section>
         <div class="form-section">
           <label for="repoSelect" class="form-label">
-            Selecione o repositório
+           Selecione o repositório da lista abaixo
           </label>
           <select 
             id="repoSelect" 
@@ -70,13 +59,13 @@
             <option value="">A carregar repositórios...</option>
           </select>
           <small id="repo-select-help" class="text-muted">
-            Pode verificar na secção lista repositórios <a href="https://unidade-acesso.github.io/reports/" target="_blank" rel="noopener noreferrer">aqui</a>.
+            Se tem dúvidas, consulte a <a href="https://unidade-acesso.github.io/reports/" target="_blank" rel="noopener noreferrer">lista de relatórios publicados no repositório</a>.
           </small>
         </div>
       </section>
 
       <!-- Report Generation Section -->
-      <section aria-label="Geração de relatório">
+      <section>
         <div class="form-section">
           <button 
             id="generateReportBtn" 
@@ -85,10 +74,23 @@
             disabled
             aria-describedby="generate-report-desc">
             <i class="bi bi-download" aria-hidden="true"></i>
-            Gerar e descarregar o relatório
+            Relatório Auditoria
           </button>
           <div id="generate-report-desc" class="sr-only">
-            Gera um relatório de acessibilidade baseado nas issues do repositório selecionado
+            Gera um relatório de auditoria baseado nas issues do repositório selecionado (exclui issues OK)
+          </div>
+          
+          <button 
+            id="generateDeclarationBtn" 
+            class="btn btn-secondary mt-2" 
+            type="button"
+            disabled
+            aria-describedby="generate-declaration-desc">
+            <i class="bi bi-download" aria-hidden="true"></i>
+            Relatório para anexar à Declaração (contém OKs)
+          </button>
+          <div id="generate-declaration-desc" class="sr-only">
+            Gera um relatório completo incluindo issues OK para anexar à Declaração de Acessibilidade
           </div>
         </div>
       </section>
@@ -105,8 +107,8 @@
   </div>
 
   <!-- Footer -->
-  <footer class="footer" role="contentinfo">
-    Copyright © 2025 <strong>Agência para a Modernização Administrativa</strong> Todos os Direitos Reservados
+  <footer class="footer">
+    Copyright © 2025 <strong>Agência para a Reforma Tecnológica do Estado, I.P.</strong> Todos os Direitos Reservados
   </footer>
 
   <!-- Scripts -->

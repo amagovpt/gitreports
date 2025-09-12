@@ -2,126 +2,87 @@
 
 const { GITHUB_TOKEN, GITHUB_OWNER } = window.APP_CONFIG;
 
-document.getElementById('fetchReposBtn').addEventListener('click', fetchRepositories);
 document.getElementById('generateReportBtn').addEventListener('click', generateReport);
+document.getElementById('generateDeclarationBtn').addEventListener('click', generateDeclarationReport);
 
 // Auto-load repositories when page loads
 document.addEventListener('DOMContentLoaded', function() {
   fetchRepositories();
   
-  // Evitar layout shift quando mensagem desaparece durante interação com select
+  // Enable buttons when a repository is selected
   const repoSelect = document.getElementById('repoSelect');
-  const fetchStatusDiv = document.getElementById('fetch-status');
+  const generateBtn = document.getElementById('generateReportBtn');
+  const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
   
-  repoSelect.addEventListener('focus', function() {
-    if (fetchStatusDiv.classList.contains('fetch-status-visible')) {
-      fetchStatusDiv.classList.add('fade-out');
-      setTimeout(() => {
-        fetchStatusDiv.classList.remove('fetch-status-visible');
-        fetchStatusDiv.classList.add('fetch-status-hidden');
-        fetchStatusDiv.classList.remove('fade-out');
-      }, 300);
-    }
-  });
-
-  repoSelect.addEventListener('click', function() {
-    if (fetchStatusDiv.classList.contains('fetch-status-visible')) {
-      fetchStatusDiv.classList.add('fade-out');
-      setTimeout(() => {
-        fetchStatusDiv.classList.remove('fetch-status-visible');
-        fetchStatusDiv.classList.add('fetch-status-hidden');
-        fetchStatusDiv.classList.remove('fade-out');
-      }, 300);
+  repoSelect.addEventListener('change', function() {
+    const isRepoSelected = this.value && this.value !== 'Escolha o repositório para gerar o relatório';
+    
+    generateBtn.disabled = !isRepoSelected;
+    generateDeclarationBtn.disabled = !isRepoSelected;
+    
+    if (isRepoSelected) {
+      generateBtn.classList.remove('disabled');
+      generateDeclarationBtn.classList.remove('disabled');
+    } else {
+      generateBtn.classList.add('disabled');
+      generateDeclarationBtn.classList.add('disabled');
     }
   });
 });
 
 async function fetchRepositories() {
-  const statusDiv = document.getElementById('status');
-  const fetchStatusDiv = document.getElementById('fetch-status');
   const repoSelect = document.getElementById('repoSelect');
   const generateBtn = document.getElementById('generateReportBtn');
-  const fetchBtn = document.getElementById('fetchReposBtn');
+  const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
   
-  repoSelect.innerHTML = '<option value="">Escolha o repositório para gerar o relatório</option>';
-  repoSelect.disabled = true;
-  generateBtn.disabled = true;
-  generateBtn.classList.add('disabled');
-  
-  // Add loading state
-  fetchBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>A carregar repositórios...';
-  fetchBtn.disabled = true;
-  
-  // Show fetch status below the button
-  fetchStatusDiv.classList.remove('fetch-status-hidden');
-  fetchStatusDiv.classList.add('fetch-status-visible');
-  fetchStatusDiv.className = 'status-message status-info';
-  fetchStatusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A procurar repositórios...';
-  fetchStatusDiv.setAttribute('aria-live', 'polite');
-  
-  // Clear main status
-  statusDiv.innerHTML = '';
-  statusDiv.className = 'status-message';
-    
   try {
-    const url = `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100`;
+    // Show loading state
+    repoSelect.innerHTML = '<option value="">A carregar repositórios...</option>';
+    repoSelect.disabled = true;
+    generateBtn.disabled = true;
+    generateBtn.classList.add('disabled');
+    generateDeclarationBtn.disabled = true;
+    generateDeclarationBtn.classList.add('disabled');
+    
+    const url = `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=name`;
     const response = await fetch(url, {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
     });
-    if (!response.ok) throw new Error('Falha ao procurar repositórios.');
-    const repos = await response.json();
-    if (!Array.isArray(repos) || repos.length === 0) {
-      fetchStatusDiv.className = 'status-message status-error';
-      fetchStatusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Nenhum repositório encontrado.';
-      fetchStatusDiv.setAttribute('aria-live', 'assertive');
-      return;
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    // Filter only repositories that start with "Report_" or "reports_" (case-insensitive)
+    
+    const repos = await response.json();
+    
+    // Filter repositories that start with "Report_" or "reports_" (case insensitive)
     const reportRepos = repos.filter(repo => 
       repo.name.toLowerCase().startsWith('report_') || 
       repo.name.toLowerCase().startsWith('reports_')
     );
     
-    if (reportRepos.length === 0) {
-      fetchStatusDiv.className = 'status-message status-error';
-      fetchStatusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Nenhum repositório de avaliação encontrado (Report_* ou reports_*).';
-      fetchStatusDiv.setAttribute('aria-live', 'assertive');
-      return;
-    }
-    
+    // Populate select with filtered repositories
+    let options = '<option value="">Escolha o repositório para gerar o relatório</option>';
     reportRepos.forEach(repo => {
-      const option = document.createElement('option');
-      option.value = repo.name;
-      option.text = repo.name;
-      repoSelect.appendChild(option);
+      options += `<option value="${repo.name}">${repo.name}</option>`;
     });
+    
+    repoSelect.innerHTML = options;
     repoSelect.disabled = false;
-    generateBtn.disabled = false;
-    generateBtn.classList.remove('disabled');
+    // Keep buttons disabled until a repository is selected
+    generateBtn.disabled = true;
+    generateBtn.classList.add('disabled');
+    generateDeclarationBtn.disabled = true;
+    generateDeclarationBtn.classList.add('disabled');
     
-    fetchStatusDiv.className = 'status-message status-success';
-    fetchStatusDiv.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> Repositórios atualizados!`;
-    fetchStatusDiv.setAttribute('aria-live', 'polite');
-    
-    // Fade out após 5 segundos e ocultar após 6 segundos (mais tempo para interação)
-    setTimeout(() => {
-      fetchStatusDiv.classList.add('fade-out');
-    }, 5000);
-    
-    setTimeout(() => {
-      fetchStatusDiv.classList.remove('fetch-status-visible');
-      fetchStatusDiv.classList.add('fetch-status-hidden');
-      fetchStatusDiv.classList.remove('fade-out');
-    }, 6000);
-  } catch (e) {
-    fetchStatusDiv.className = 'status-message status-error';
-    fetchStatusDiv.innerHTML = `<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Erro: ${e.message}`;
-    fetchStatusDiv.setAttribute('aria-live', 'assertive');
-  } finally {
-    fetchBtn.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Atualizar repositórios<span class="sr-only">. Clique para atualizar a lista de repositórios disponíveis</span>';
-    fetchBtn.disabled = false;
+  } catch (error) {
+    console.error('Erro ao carregar repositórios:', error);
+    repoSelect.innerHTML = '<option value="">Erro ao carregar repositórios</option>';
+    repoSelect.disabled = false;
   }
 }
+
+
 
 async function fetchReadmeInfo(repoName) {
   try {
@@ -138,8 +99,7 @@ async function fetchReadmeInfo(repoName) {
     const content = decodeURIComponent(escape(atob(data.content))); // Decode base64 with proper UTF-8 handling
     
     // Extract info from README with flexible patterns
-    const dateMatch = content.match(/\*\*Data:\*\*\s*(\d{1,2} de \w+ de \d{4})|Data:\s*(\d{1,2} de \w+ de \d{4})|(\d{1,2} de \w+ de \d{4})/);
-    
+    const dateMatch = content.match(/\*\*Data:\*\*\s*(\d{1,2} de \w+ de \d{4})|Data:\s*(\d{1,2} de \w+ de \d{4})|(\d{1,2} de \w+ de \d{4})/);    
     // Extract organization from header (# title)
     const organizationMatch = content.match(/^#\s*(.+)$/m);
     
@@ -147,25 +107,49 @@ async function fetchReadmeInfo(repoName) {
     const urlMatch = content.match(/[-*]\s*URL:\s*([^\n\r]+)/i);
     
     // Extract owner/proprietário (handle different spacing and formats)
-    const ownerMatch = content.match(/[-*]\s*Proprietário:\s*([^\n\r]+)/i) ||
+    const ownerMatch = content.match(/[-*]\s*Propriedade:\s*([^\n\r]+)/i) ||
+                      content.match(/Propriedade:\s*([^\n\r]+)/i) ||
+                      content.match(/[-*]\s*Proprietário:\s*([^\n\r]+)/i) ||
                       content.match(/Proprietário:\s*([^\n\r]+)/i);
     
     // Extract seal type (candidatura a)
-    const sealMatch = content.match(/[-*]\s*Candidatura a:\s*([^\n\r]+)/i) ||
+    const sealMatch = content.match(/[-*]\s*Candidatura:\s*([^\n\r]+)/i) ||
+                     content.match(/Candidatura:\s*([^\n\r]+)/i) ||
+                     content.match(/[-*]\s*Candidatura a:\s*([^\n\r]+)/i) ||
                      content.match(/Candidatura a:\s*([^\n\r]+)/i);
+    
+    // Extract creation date
+    const creationDateMatch = content.match(/[-*]\s*Data de criação:\s*([^\n\r]+)/i) ||
+                           content.match(/Data de criação:\s*([^\n\r]+)/i);
+    
+    // Extract last update date
+    const lastUpdateMatch = content.match(/[-*]\s*Última atualização:\s*([^\n\r]+)/i) ||
+                          content.match(/Última atualização:\s*([^\n\r]+)/i);
     
     const extractedInfo = {
       date: dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3]) : null,
       organization: organizationMatch ? organizationMatch[1].trim() : null,
       url: urlMatch ? urlMatch[1].trim() : null,
       owner: ownerMatch ? ownerMatch[1].trim() : null,
-      sealType: sealMatch ? sealMatch[1].trim() : null
+      sealType: sealMatch ? sealMatch[1].trim() : null,
+      creationDate: creationDateMatch ? creationDateMatch[1].trim() : null,
+      lastUpdate: lastUpdateMatch ? lastUpdateMatch[1].trim() : null
     };
     return extractedInfo;
   } catch (e) {
     console.warn('Failed to fetch README:', e);
     return null;
   }
+}
+
+async function fetchIssues(repoName, includeClosedIssues = false) {
+  const state = includeClosedIssues ? 'all' : 'open';
+  const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=${state}&per_page=100`, {
+    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+  });
+  
+  if (!response.ok) throw new Error('Falha ao procurar issues do repositório.');
+  return await response.json();
 }
 
 async function generateReport() {
@@ -191,21 +175,22 @@ async function generateReport() {
   statusDiv.setAttribute('aria-live', 'polite');
   
   try {
-    // Fetch both issues and README in parallel
-    const [issuesResponse, readmeInfo] = await Promise.all([
-      fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=all&per_page=100`, {
-        headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-      }),
+    // Fetch both issues (including closed) and README in parallel
+    const [issues, readmeInfo] = await Promise.all([
+      fetchIssues(repoName, true), // Include closed issues for calculation
       fetchReadmeInfo(repoName)
     ]);
     
-    if (!issuesResponse.ok) throw new Error('Falha ao procurar issues do repositório.');
-    
     statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A processar dados e gerar relatório...';
     
-    const issues = await issuesResponse.json();
-    const grouped = groupIssues(issues);
-    const html = generateReportHTML(grouped, repoName, readmeInfo);
+    // Criar uma cópia das issues para cálculo de percentagens (incluindo OK)
+    const issuesForCalculation = [...issues];
+    // Agrupar issues para cálculo (sem filtrar OK)
+    const groupedForCalculation = groupIssues(issuesForCalculation, false);
+    
+    // Filtrar issues OK para exibição no relatório
+    const groupedForDisplay = groupIssues(issues, true); // Filter out OK issues
+    const html = generateReportHTML(groupedForDisplay, repoName, readmeInfo, groupedForCalculation);
     
     // Extract number from repo name (e.g., "Report_001" -> "001", "reports_123" -> "123")
     const repoNumberMatch = repoName.match(/(?:reports?_)(\d+)/i);
@@ -228,7 +213,67 @@ async function generateReport() {
   }
 }
 
-function groupIssues(issues) {
+async function generateDeclarationReport() {
+  const repoSelect = document.getElementById('repoSelect');
+  const repoName = repoSelect.value;
+  const statusDiv = document.getElementById('status');
+  const generateBtn = document.getElementById('generateDeclarationBtn');
+  
+  if (!repoName || repoName === 'Escolha o repositório para gerar o relatório' || repoName === '') {
+    statusDiv.className = 'status-message status-error';
+    statusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Por favor selecione um repositório.';
+    statusDiv.setAttribute('aria-live', 'assertive');
+    return;
+  }
+  
+  // Add loading state
+  generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>A gerar relatório...';
+  generateBtn.disabled = true;
+  generateBtn.classList.add('disabled');
+  
+  statusDiv.className = 'status-message status-info';
+  statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A procurar dados do repositório...';
+  statusDiv.setAttribute('aria-live', 'polite');
+  
+  try {
+    // Fetch both issues (including closed) and README in parallel
+    const [issues, readmeInfo] = await Promise.all([
+      fetchIssues(repoName, true), // Include closed issues for declaration report
+      fetchReadmeInfo(repoName)
+    ]);
+    
+    statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A processar dados e gerar relatório...';
+    
+    // Criar uma cópia das issues para cálculo de percentagens (incluindo OK)
+    const issuesForCalculation = [...issues];
+    // Agrupar issues para cálculo (sem filtrar OK)
+    const groupedForCalculation = groupIssues(issuesForCalculation, false);
+    
+    const grouped = groupIssues(issues, false); // Don't filter out OK issues
+    const html = generateReportHTML(grouped, repoName, readmeInfo, groupedForCalculation);
+    
+    // Extract number from repo name (e.g., "Report_001" -> "001", "reports_123" -> "123")
+    const repoNumberMatch = repoName.match(/(?:reports?)_(\d+)/i);
+    const repoNumber = repoNumberMatch ? repoNumberMatch[1].padStart(3, '0') : '001';
+    const filename = `declaracao_acessibilidade_${repoNumber}.html`;
+    
+    downloadFile(html, filename);
+    
+    statusDiv.className = 'status-message status-success';
+    statusDiv.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> Relatório para Declaração de Acessibilidade gerado com sucesso! Consulte a sua pasta de transferências.`;
+    statusDiv.setAttribute('aria-live', 'polite');
+  } catch (e) {
+    statusDiv.className = 'status-message status-error';
+    statusDiv.innerHTML = `<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Erro: ${e.message}`;
+    statusDiv.setAttribute('aria-live', 'assertive');
+  } finally {
+    generateBtn.innerHTML = '<i class="bi bi-download" aria-hidden="true"></i> Relatório para anexar à Declaração (contém OKs)';
+    generateBtn.disabled = false;
+    generateBtn.classList.remove('disabled');
+  }
+}
+
+function groupIssues(issues, filterOkIssues = true) {
   
   const grouped = {
     'chk10': {},
@@ -236,10 +281,17 @@ function groupIssues(issues) {
     'transacao': {},
     'declaracao': {},
     'automatic': {},
+    'testesUsabilidade': {},
     'outras': {}
   };
 
   issues.forEach(issue => {
+    // Skip issues with no labels or with "Ok" label (if filterOkIssues is true)
+    // Não filtrar issues com label 'ok' para a declaração
+    if (issue.labels.length === 0 || (filterOkIssues && issue.labels.some(l => l.name.toLowerCase().trim() === 'ok') && !issue.labels.some(l => l.name === 'declaracao' || l.name === 'dec a11y'))) {
+      return;
+    }
+
     // Determine checklist type
     let checklistType = 'outras';
     if (issue.labels.some(l => l.name === 'chk 10 web' || l.name === 'chk10')) checklistType = 'chk10';
@@ -247,6 +299,7 @@ function groupIssues(issues) {
     else if (issue.labels.some(l => l.name === 'chk trans' || l.name === 'chk transacao' || l.name === 'transacao' || l.name === 'chk transação')) checklistType = 'transacao';
     else if (issue.labels.some(l => l.name === 'declaracao' || l.name === 'dec a11y')) checklistType = 'declaracao';
     else if (issue.labels.some(l => l.name === 'automatic' || l.name === 'auto' || l.name === 'av auto' || l.name.toLowerCase().trim() === 'av auto')) checklistType = 'automatic';
+    else if (issue.labels.some(l => l.name === 'testes usabilidade' || l.name === 'testes de usabilidade')) checklistType = 'testesUsabilidade';
     else if (issue.labels.some(l => l.name === 'outras violações' || l.name === 'outras violacoes')) checklistType = 'outras';
 
     // Find requirement label (R X.X)
@@ -272,9 +325,9 @@ function groupIssues(issues) {
       l.name.toLowerCase() === 'melhoria'
     )) status = 'melhoria';
 
-    // Para "outras violações", permitir issues sem requirement labels
+    // Para "outras violações", "testes usabilidade", permitir issues sem requirement labels
     // Para outros tipos, exigir requirement labels
-    if (requirementName === null && checklistType !== 'outras' && checklistType !== 'automatic' && checklistType !== 'declaracao') {
+    if (requirementName === null && checklistType !== 'outras' && checklistType !== 'automatic' && checklistType !== 'declaracao' && checklistType !== 'testesUsabilidade') {
       return;
     }
 
@@ -282,12 +335,13 @@ function groupIssues(issues) {
     let groupKey;
     if (checklistType === 'declaracao') {
       // Para declaração, sempre usar o mesmo grupo
-      groupKey = 'Declaração de Acessibilidade';
+      groupKey = 'declaracao';
     } else {
       // Para outros tipos, usar o requirement ou o título padrão
       groupKey = requirementName || 
         (checklistType === 'outras' ? 'Outras violações' : 
-         checklistType === 'automatic' ? 'Avaliação automática' : null);
+         checklistType === 'automatic' ? 'Avaliação automática' :
+         checklistType === 'testesUsabilidade' ? 'Testes de usabilidade' : null);
     }
     
     if (groupKey && !grouped[checklistType][groupKey]) {
@@ -301,7 +355,9 @@ function groupIssues(issues) {
   return grouped;
 }
 
-function generateReportHTML(grouped, repoName, readmeInfo = null) {
+function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalculation = null) {
+  // Se groupedForCalculation não for fornecido, usar o mesmo grouped para cálculos
+  const dataForCalculation = groupedForCalculation || grouped;
   // Use README info if available, otherwise fallback to defaults  
   const currentDateRaw = new Date().toLocaleDateString('pt-PT', { 
     year: 'numeric', 
@@ -311,11 +367,20 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
   const currentDate = currentDateRaw.charAt(0).toUpperCase() + currentDateRaw.slice(1);
   const reportDate = readmeInfo?.date || currentDate;
   const organization = readmeInfo?.organization || repoName;
-  const owner = readmeInfo?.owner ? `Proprietário: ${readmeInfo.owner}` : `Proprietário do ${repoName}`;
+  const owner = readmeInfo?.owner ? `Propriedade: ${readmeInfo.owner}` : `Propriedade: Proprietário do ${repoName}`;
   const websiteUrl = readmeInfo?.url || `https://${repoName.toLowerCase()}.gov.pt/`;
-  const sealType = readmeInfo?.sealType ? `Candidatura a: ${readmeInfo.sealType}` : 'Candidatura a: Selo Bronze';
+  const sealType = readmeInfo?.sealType ? `Candidatura: ${readmeInfo.sealType}` : 'Candidatura: candidatura a selo bronze';
   const sealTypeShort = readmeInfo?.sealType || 'Selo Bronze';
   const ownerShort = readmeInfo?.owner || 'Programa PTCris';
+  const creationDate = readmeInfo?.creationDate ? `Data de criação: ${readmeInfo.creationDate}` : null;
+  // Usar a data atual para a última atualização
+  const lastUpdateDate = new Date();
+  const formattedDate = lastUpdateDate.toLocaleDateString('pt-PT', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric'
+  });
+  const lastUpdate = `Última atualização: ${formattedDate}`;
 
   // Extrair (Mês Ano) de reportDate para exibição curta, ex.: "Agosto 2025"
   const reportMonthYear = (() => {
@@ -455,18 +520,15 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       color: #000;
       margin-left: -1.5rem;
       list-style-position: inside;
+      list-style: none;
     }
     
-    .evidence-item .github-link {
+    
+    .evidence-item p {
       margin: 1.5rem 0 1rem 0;
-      border-color: #1e3a8a;
-      color: #1e3a8a;
     }
-    .evidence-item .github-link:hover {
-      background-color: #1e3a8a;
-      color: #ffffff;
-      border-color: #1e3a8a;
-    }
+    
+
     .evidence-labels {
       font-size: 0.85em;
       display: inline-flex;
@@ -502,23 +564,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
       white-space: nowrap;
       border: 0;
     }
-    .github-link {
-      display: inline-block;
-      margin-top: 0.75rem;
-      padding: 0.375rem 0.75rem;
-      border: 1px solid #1e3a8a;
-      border-radius: 0.375rem;
-      color: #1e3a8a;
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: all 0.15s ease-in-out;
-    }
-    .github-link:hover {
-      background-color: #1e3a8a;
-      color: #ffffff;
-      text-decoration: none;
-    }
+
     #checklist-10-aspetos {
       margin-top: 3.5rem !important;
     }
@@ -562,21 +608,24 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
 </head>
 <body>
   <a href="#conteudo-principal" class="skip-link visually-hidden-focusable">Saltar para o conteúdo principal</a>
-  <div class="container mt-4" id="conteudo-principal" role="main">
+  <div class="container mt-4" id="conteudo-principal">
     <header class="mb-4">
       <h1>Relatório Avaliação da Candidatura da ${organization}</h1>
     </header>
 
     <section class="mb-4">
       <ul>
-        <li>Consulte aqui: Relatório de Auditoria candidatura a ${sealTypeShort} de ${ownerShort}.</li>
-        <li>Avaliação feita por: AMA. I.P. - Núcleo de Experiência e Usabilidade</li>
-        <li>Data: ${reportMonthYear}</li>
-        <li>${owner}</li>
+        <li>Avaliação feita por: ARTE. I.P. - Núcleo de Experiência e Usabilidade</li>
+        ${creationDate ? `<li>${creationDate}</li>` : ''}
+        ${lastUpdate ? `<li>${lastUpdate}</li>` : ''}
         <li>URL: <a href="${websiteUrl}" target="_blank" rel="noopener noreferrer">${websiteUrl}</a></li>
+        <li>${owner}</li>
         <li>${sealType}</li>
+          <li>Progresso (% de requisitos auditados): ${calculateProgress(dataForCalculation).percentage}%</li>
       </ul>
     </section>
+
+
 
     <nav class="mb-4 report-section" aria-label="Índice">
       <details open>
@@ -606,17 +655,18 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
                   ${sortRequirements(grouped.transacao).map(req => `<li><a href="#req-transacao-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'transacao')}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
+              ${hasIssues(grouped.outras) ? '<li><a href="#outras-violacoes">Outras violações</a></li>' : ''}
             </ul>
           </li>` : ''}
-          ${hasIssues(grouped.outras) ? '<li><a href="#outras-violacoes">Outras violações</a></li>' : ''}
+          ${hasIssues(grouped.testesUsabilidade) ? '<li><a href="#testes-usabilidade">Testes de usabilidade</a></li>' : ''}
           <li><a href="#etiquetas">Significado das etiquetas utilizadas</a></li>
         </ul>
       </details>
     </nav>
 
-    <section id="introducao" class="mb-5 report-section">
-      <h2>Introdução</h2>
-      <p>O website <a href="${websiteUrl}" target="_blank">${websiteUrl}</a> <strong><span class="status-${getOverallProjectStatus(grouped) === 'passa' ? 'ok' : 'nok'}">${getOverallProjectStatus(grouped)}</span></strong> nos requisitos mínimos do Selo de Usabilidade e Acessibilidade.</p>
+         <section id="introducao" class="mb-5 report-section">
+       <h2 id="req-introducao">Introdução</h2>
+      <p>O website <a href="${websiteUrl}" target="_blank">${websiteUrl}</a> <strong><span class="status-${getOverallProjectStatus(grouped) === 'passa' ? 'ok' : 'nok'}"><span class="sr-only">etiqueta: </span>${getOverallProjectStatus(grouped)}</span></strong> nos requisitos mínimos do Selo de Usabilidade e Acessibilidade.</p>
       
       <table class="table table-bordered">
         <caption>Estado das avaliações efetuadas</caption>
@@ -629,16 +679,16 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
         <tbody>
           <tr>
             <td>Avaliação Automática</td>
-            <td><span class="status-${getOverallStatus(grouped.automatic)}">${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></td>
+            <td><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(grouped.automatic))}</span></td>
           </tr>
           <tr>
             <td>Avaliação Manual</td>
-            <td><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}">${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></td>
+            <td><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span>${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) === 'ok' ? getImprovementText({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) : ''}</td>
           </tr>
         </tbody>
       </table>
 
-      ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? `
+      ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? `
       <p>Das avaliações manuais efetuadas obtiveram-se os resultados que se sintetizam na tabela seguinte.</p>` : ''}
       <table class="table table-bordered">
         <caption>Níveis de conformidade das avaliações manuais</caption>
@@ -650,115 +700,197 @@ function generateReportHTML(grouped, repoName, readmeInfo = null) {
           </tr>
         </thead>
         <tbody>`
-      const chk10Status = getPassStatus(grouped.chk10) === 'passa' ? 'ok' : 'nok';
-      const conteudoStatus = getPassStatus(grouped.conteudo) === 'passa' ? 'ok' : 'nok';
-      const transacaoStatus = getPassStatus(grouped.transacao) === 'passa' ? 'ok' : 'nok';
+      const chk10Status = getPassStatus(dataForCalculation.chk10) === 'passa' ? 'ok' : 'nok';
+      const conteudoStatus = getPassStatus(dataForCalculation.conteudo) === 'passa' ? 'ok' : 'nok';
+      const transacaoStatus = getPassStatus(dataForCalculation.transacao) === 'passa' ? 'ok' : 'nok';
 
-      html += `${hasIssues(grouped.chk10) ? `
+      html += `${hasIssues(dataForCalculation.chk10) ? `
           <tr>
             <td>10 aspetos</td>
-            <td>${calculateConformance(grouped.chk10)}</td>
-            <td><span class="status-${chk10Status}">${chk10Status === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td>${calculateConformance(dataForCalculation.chk10)}</td>
+            <td><span class="status-${chk10Status}"><span class="sr-only">etiqueta: </span>${chk10Status === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
-          ${hasIssues(grouped.conteudo) ? `
+          ${hasIssues(dataForCalculation.conteudo) ? `
           <tr>
             <td>Conteúdo</td>
-            <td>${calculateConformance(grouped.conteudo)}</td>
-            <td><span class="status-${conteudoStatus}">${conteudoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td>${calculateConformance(dataForCalculation.conteudo)}</td>
+            <td><span class="status-${conteudoStatus}"><span class="sr-only">etiqueta: </span>${conteudoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
-          ${hasIssues(grouped.transacao) ? `
+          ${hasIssues(dataForCalculation.transacao) ? `
           <tr>
             <td>Transação</td>
-            <td>${calculateConformance(grouped.transacao)}</td>
-            <td><span class="status-${transacaoStatus}">${transacaoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
+            <td>${calculateConformance(dataForCalculation.transacao)}</td>
+            <td><span class="status-${transacaoStatus}"><span class="sr-only">etiqueta: </span>${transacaoStatus === 'ok' ? 'Passa' : 'Não passa'}</span></td>
           </tr>` : ''}
         </tbody>
       </table>
       
-      ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? '<p><strong>Nota:</strong> Para que uma checklist passe tem de ter uma conformidade superior a 75%.</p>' : ''}
+      ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? '<p><strong>Nota:</strong> para passar os requisitos do Selo é necessário alcançar um nível de conformidade superior ou igual a 75% em cada uma das 3 checklists.</p>' : ''}
       
-      ${getOverallStatus(grouped.declaracao) === 'nok' ? '<p><strong>Nota:</strong> Tome nota que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo “Declaração de acessibilidade” para saber o que tem de corrigir.</p>' : ''}
+      ${getOverallStatus(dataForCalculation.declaracao) === 'nok' ? '<p>Verificámos também que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo "Declaração de acessibilidade" para saber o que tem de corrigir.</p>' : ''}
     </section>
 
-    ${hasIssues(grouped.declaracao) ? `
-    <section id="declaracao" class="mb-5 report-section">
-      <h3>Declaração de Acessibilidade</h3>
-      <p><span class="status-${getOverallStatus(grouped.declaracao)}">${formatStatusForDisplay(getOverallStatus(grouped.declaracao))}</span></p>
-      ${generateRequirementsSection(grouped.declaracao, 'declaracao')}
-    </section>` : ''}
+              ${hasIssues(dataForCalculation.declaracao) ? `
+     <section id="declaracao" class="mb-5 report-section">
+       <h2 id="req-declaracao-declaracao-de-acessibilidade">Declaração de Acessibilidade</h2>
+        <p><span class="status-${getOverallStatus(dataForCalculation.declaracao)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.declaracao))}</span></p>
+       <p>De acordo com o <a href="https://www.acessibilidade.gov.pt/blogue/categoria-acessibilidade/dl-n-o-83-2018-acessibilidade-dos-sitios-web-e-das-aplicacoes-moveis/#n8" target="_blank" rel="noopener noreferrer">artigo 8º do DL n.º 83/2018</a>, todos os sítios web e todas as aplicações móveis têm de ostentar uma Declaração de Acessibilidade. A Declaração é o documento na qual a organização evidencia o trabalho levado a efeito para tornar os seus conteúdos e serviços digitais mais acessíveis, disponibilizando ainda contactos para ajuda adicional.</p>
+      
+       <p>Lista de evidências recolhidas:</p>
+       <ul class="evidence-list">
+         ${Object.values(grouped.declaracao).flat().map(issue => {
+           const labelTags = issue.labels.map(label => {
+             const labelName = label.name;
+             let labelClass = 'label-tag';
+             
+             if (labelName.includes('dec') || labelName.includes('a11y')) {
+               labelClass += ' label-declaracao';
+             } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
+               labelClass += ' label-checklist';
+             } else if (labelName.toLowerCase().includes('melhoria')) {
+               labelClass += ' label-melhoria';
+             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+               labelClass += ' label-na';
+             } else if (labelName.toLowerCase() === 'ok') {
+               labelClass += ' label-ok';
+             } else if (labelName.toLowerCase() === 'nok') {
+               labelClass += ' label-nok';
+             } else {
+               labelClass += ' label-checklist';
+             }
+             
+             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+           }).join('');
+           
+           return `
+             <li class="evidence-item">
+               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <div class="evidence-labels">${labelTags}</div>
+               ${processIssueContent(issue)}
+             </li>
+           `;
+         }).join('')}
+       </ul>
+     </section>` : ''}
 
-    ${hasIssues(grouped.automatic) ? `
-    <section id="avaliacao-automatica" class="mb-5 report-section">
-      <h3>Avaliação automática</h3>
-      <p><span class="status-${getOverallStatus(grouped.automatic)}">${formatStatusForDisplay(getOverallStatus(grouped.automatic))}</span></p>
-      ${calculateDetailedStats(grouped.automatic, 'Avaliação automática')}
-      ${generateRequirementsSection(grouped.automatic, 'automatic')}
-    </section>` : ''}
+              ${hasIssues(grouped.automatic) ? `
+     <section id="avaliacao-automatica" class="mb-5 report-section">
+       <h2 id="req-automatic-avaliacao-automatica">Avaliação automática</h2>
+       <p><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(grouped.automatic))}</span></p>
+       <p>Para a produção das evidências do presente capítulo, foram utilizadas ferramentas automatizadas de avaliação de requisitos de acessibilidade de acordo com a norma WCAG 2.1 'AA'. A amostra em análise pelas ferramentas é composta pela Homepage mais todas as páginas diretamente hiperligadas por ela, pertencentes ao domínio.</p>
+       ${calculateDetailedStats(dataForCalculation.automatic, 'Avaliação automática')}
+       <p>Lista de evidências recolhidas:</p>
+       <ul class="evidence-list">
+         ${Object.values(grouped.automatic).flat().map(issue => {
+           const labelTags = issue.labels.map(label => {
+             const labelName = label.name;
+             let labelClass = 'label-tag';
+             
+             if (labelName.includes('auto')) {
+               labelClass += ' label-auto';
+             } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
+               labelClass += ' label-checklist';
+             } else if (labelName.toLowerCase().includes('melhoria')) {
+               labelClass += ' label-melhoria';
+             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+               labelClass += ' label-na';
+             } else if (labelName.toLowerCase() === 'ok') {
+               labelClass += ' label-ok';
+             } else if (labelName.toLowerCase() === 'nok') {
+               labelClass += ' label-nok';
+             } else if (labelName.match(/R \d+\.\d+/)) {
+               labelClass += ' label-requisito';
+             } else {
+               labelClass += ' label-checklist';
+             }
+             
+             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+           }).join('');
+           
+           return `
+             <li class="evidence-item">
+               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <div class="evidence-labels">${labelTags}</div>
+               ${processIssueContent(issue)}
+             </li>
+           `;
+         }).join('')}
+       </ul>
+     </section>` : ''}
 
-    ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? `
-    <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
-      <h2>Avaliação manual</h2>
-      <p><span class="status-${getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao})}">${formatStatusForDisplay(getOverallStatus({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}))}</span></p>
-      <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
-      <ul>
-        ${hasIssues(grouped.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
-        ${hasIssues(grouped.conteudo) ? '<li>checklist <strong>Conteúdo</strong> (se candidato a Selo Bronze);</li>' : ''}
-        ${hasIssues(grouped.transacao) ? '<li>checklist <strong>Transação</strong> (se candidato a Selo Prata).</li>' : ''}
-      </ul>
+         ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? `
+     <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
+       <h2 id="req-avaliacao-manual">Avaliação manual</h2>
+       <p><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span>${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) === 'ok' ? getImprovementText({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) : ''}</p>
+       <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
+       <ul>
+         ${hasIssues(dataForCalculation.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
+         ${hasIssues(dataForCalculation.conteudo) ? '<li>checklist <strong>Conteúdo</strong> (se candidato a Selo Bronze);</li>' : ''}
+         ${hasIssues(dataForCalculation.transacao) ? '<li>checklist <strong>Transação</strong> (se candidato a Selo Prata).</li>' : ''}
+       </ul>
+       <p>Sempre que os auditores localizam uma falha grave de um requisito de acessibilidade que, embora não faça parte do esquema de requisitos do Selo, se enquadre no âmbito das violações das WCAG 2.1 'AA' do W3C, tal referência é anotada em "Outras violações" do presente capítulo. Apesar destas violações não se apresentarem com carácter vinculativo no esquema de requisitos do Selo, recomenda-se que as mesmas sejam corrigidas.</p>
 
-      ${hasIssues(grouped.chk10) ? `
+      ${hasIssues(dataForCalculation.chk10) ? `
       <div class="checklist-section">
         <h3 id="checklist-10-aspetos">Checklist 10 aspetos</h3>
-        <p><span class="status-${getOverallStatus(grouped.chk10)}">${formatStatusForDisplay(getOverallStatus(grouped.chk10))}</span></p>
-        ${calculateDetailedStats(grouped.chk10, 'Checklist 10 aspetos')}
+        <p><span class="status-${getOverallStatus(dataForCalculation.chk10)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.chk10))}</span>${getOverallStatus(dataForCalculation.chk10) === 'ok' ? getImprovementText(dataForCalculation.chk10) : ''}</p>
+        ${calculateDetailedStats(dataForCalculation.chk10, 'Checklist 10 aspetos')}
         ${generateRequirementsSection(grouped.chk10, 'chk10')}
       </div>` : ''}
 
-      ${hasIssues(grouped.conteudo) ? `
+      ${hasIssues(dataForCalculation.conteudo) ? `
       <div class="checklist-section">
         <h3 id="checklist-conteudo">Checklist Conteúdo</h3>
-        <p><span class="status-${getOverallStatus(grouped.conteudo)}">${formatStatusForDisplay(getOverallStatus(grouped.conteudo))}</span></p>
-        ${calculateDetailedStats(grouped.conteudo, 'Checklist Conteúdo')}
+        <p><span class="status-${getOverallStatus(dataForCalculation.conteudo)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.conteudo))}</span>${getOverallStatus(dataForCalculation.conteudo) === 'ok' ? getImprovementText(dataForCalculation.conteudo) : ''}</p>
+        ${calculateDetailedStats(dataForCalculation.conteudo, 'Checklist Conteúdo')}
         ${generateRequirementsSection(grouped.conteudo, 'conteudo')}
       </div>` : ''}
 
-      ${hasIssues(grouped.transacao) ? `
+      ${hasIssues(dataForCalculation.transacao) ? `
       <div class="checklist-section">
         <h3 id="checklist-transacao">Checklist Transação</h3>
-        <p><span class="status-${getOverallStatus(grouped.transacao)}">${formatStatusForDisplay(getOverallStatus(grouped.transacao))}</span></p>
-        ${calculateDetailedStats(grouped.transacao, 'Checklist Transação')}
+        <p><span class="status-${getOverallStatus(dataForCalculation.transacao)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.transacao))}</span>${getOverallStatus(dataForCalculation.transacao) === 'ok' ? getImprovementText(dataForCalculation.transacao) : ''}</p>
+        ${calculateDetailedStats(dataForCalculation.transacao, 'Checklist Transação')}
         ${generateRequirementsSection(grouped.transacao, 'transacao')}
+      </div>` : ''}
+      
+      ${hasIssues(dataForCalculation.outras) ? `
+      <div class="checklist-section">
+        <h3 id="outras-violacoes">Outras violações</h3>
+        ${generateRequirementsSection(grouped.outras, 'outras')}
       </div>` : ''}
     </section>` : ''}
 
-    ${hasIssues(grouped.outras) ? `
-    <section id="outras-violacoes" class="mb-5 report-section">
-      <h2>Outras violações</h2>
-      ${generateRequirementsSection(grouped.outras, 'outras')}
-    </section>` : ''}
 
-    <section id="etiquetas" class="mb-5 report-section">
-      <h2>Significado das etiquetas utilizadas</h2>
+
+         ${hasIssues(dataForCalculation.testesUsabilidade) ? `
+     <section id="testes-usabilidade" class="mb-5 report-section">
+       <h2 id="req-testes-usabilidade">Testes de usabilidade</h2>
+       ${generateRequirementsSection(grouped.testesUsabilidade, 'testesUsabilidade')}
+     </section>` : ''}
+
+         <section id="etiquetas" class="mb-5 report-section">
+       <h2 id="req-etiquetas">Significado das etiquetas utilizadas</h2>
       <ul>
                                    <li><span class="label-tag label-ok"><span class="sr-only">etiqueta: </span>OK</span> - status OK</li>
                                    <li><span class="label-tag label-melhoria"><span class="sr-only">etiqueta: </span>melhoria</span> - status OK, mas pode melhorar</li>
                                    <li><span class="label-tag label-nok"><span class="sr-only">etiqueta: </span>NOK</span> - status Not OK</li>
                                    <li><span class="label-tag label-na"><span class="sr-only">etiqueta: </span>N/A</span> - status Não Aplicável</li>
-                                   <li><span class="label-tag label-requisito"><span class="sr-only">etiqueta: </span>R 1.1</span> - identificação de requisito específico</li>
-                                   ${hasIssues(grouped.chk10) ? '<li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk 10 web</span> - checklist 10 Aspetos críticos de acessibilidade funcional</li>' : ''}
-                                   ${hasIssues(grouped.conteudo) ? '<li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk conteúdo</span> - checklist Conteúdo</li>' : ''}
-                                   ${hasIssues(grouped.transacao) ? '<li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk transação</span> - checklist Transação</li>' : ''}
+                                   <li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk10 web</span> - checklist 10 Aspetos críticos de acessibilidade funcional</li>
+                                   <li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk conteúdo</span> - checklist Conteúdo</li>
+                                   <li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>chk transação</span> - checklist Transação</li>
+                                   <li><span class="label-tag label-outras"><span class="sr-only">etiqueta: </span>outras violações</span> - permite construir o subcapítulo "Outras violações", o qual integra o capítulo "Avaliações manuais"</li>
                                    <li><span class="label-tag label-declaracao"><span class="sr-only">etiqueta: </span>dec a11y</span> - permite construir o capítulo "Declaração de acessibilidade e usabilidade"</li>
                                    <li><span class="label-tag label-auto"><span class="sr-only">etiqueta: </span>av auto</span> - permite construir o capítulo "Avaliação automática"</li>
-                                   <li><span class="label-tag label-outras"><span class="sr-only">etiqueta: </span>outras violações</span> - permite construir o capítulo "Outras violações"</li>
+                                   <li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>testes usabilidade</span> - permite construir o capítulo "Testes de usabilidade"</li>
       </ul>
     </section>
 
   </div>
 
-  <footer class="mt-5 pt-4 border-top text-center text-muted" role="contentinfo">
+  <footer class="mt-5 pt-4 border-top text-center text-muted">
     <div class="container">
-      <p>© 2025 AMA - Agência para a Modernização Administrativa, I.P. Todos os Direitos Reservados.</p>
+      <p>© 2025 ARTE - Agência para a Reforma Tecnológica do Estado, I.P. Todos os Direitos Reservados.</p>
       <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
     </div>
   </footer>
@@ -800,72 +932,89 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
     
     const overallStatus = getRequirementStatus(issues);
     const displayTitle = getRequirementTitle(requirement, checklistType);
-    // Use h3 for "outras" to maintain proper heading hierarchy, h4 for others  
-    const headingTag = checklistType === 'outras' ? 'h3' : 'h4';
-    html += `
-      <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${displayTitle}</${headingTag}>
-      <div class="requirement-content">
-                                   ${(requirement !== 'Declaração de Acessibilidade') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForDisplay(overallStatus)}</span></p>` : ''}
+    // Use h4 for all requirement titles to maintain proper heading hierarchy
+    const headingTag = 'h4';
+    
+    // Only add the heading if there's a title to display
+    if (displayTitle) {
+      html += `
+        <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${displayTitle}</${headingTag}>
+      `;
+    }
+    
+    html += `<div class="requirement-content">
+        ${(requirement !== 'declaracao') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForRequirementDisplay(overallStatus, issues)}</span>${overallStatus === 'ok' ? getImprovementText(issues) : ''}</p>` : ''}
         <p>Lista de evidências recolhidas:</p>
     `;
     
     html += '<ul class="evidence-list">';
-    issues.forEach(issue => {
-      // Create individual label tags with colors
-      const labelTags = issue.labels.map(label => {
-        const labelName = label.name;
-        let labelClass = 'label-tag';
-        
-        // Determine label color based on content
-        if (labelName.includes('chk') || labelName.includes('web')) {
-          labelClass += ' label-checklist';
-        } else if (labelName.includes('auto')) {
-          labelClass += ' label-auto';
-        } else if (labelName.includes('dec') || labelName.includes('a11y')) {
-          labelClass += ' label-declaracao';
-        } else if (labelName.includes('outras') || labelName.includes('violacoes')) {
-          labelClass += ' label-outras';
-        } else if (labelName.toLowerCase().includes('melhoria')) {
-          labelClass += ' label-melhoria';
-        } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
-          labelClass += ' label-na';
-        } else if (labelName.toLowerCase() === 'ok') {
-          labelClass += ' label-ok';
-        } else if (labelName.toLowerCase() === 'nok') {
-          labelClass += ' label-nok';
-        } else if (labelName.match(/R \d+\.\d+/)) {
-          labelClass += ' label-requisito';
-        } else {
-          labelClass += ' label-checklist'; // default to purple
-        }
-        
-                                   return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
-      }).join('');
+    // Verificar se issues é um array antes de iterar
+    if (Array.isArray(issues)) {
+      issues.forEach(issue => {
+        // Verificar se issue existe e tem labels
+        if (issue && Array.isArray(issue.labels)) {
+          // Create individual label tags with colors
+          const labelTags = issue.labels.map(label => {
+            const labelName = label.name;
+            let labelClass = 'label-tag';
+            
+            // Determine label color based on content
+            if (labelName.includes('chk') || labelName.includes('web')) {
+              labelClass += ' label-checklist';
+            } else if (labelName.includes('auto')) {
+              labelClass += ' label-auto';
+            } else if (labelName.includes('dec') || labelName.includes('a11y')) {
+              labelClass += ' label-declaracao';
+            } else if (labelName.includes('outras') || labelName.includes('violacoes')) {
+              labelClass += ' label-outras';
+            } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
+              labelClass += ' label-checklist';
+            } else if (labelName.toLowerCase().includes('melhoria')) {
+              labelClass += ' label-melhoria';
+            } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+              labelClass += ' label-na';
+            } else if (labelName.toLowerCase() === 'ok') {
+              labelClass += ' label-ok';
+            } else if (labelName.toLowerCase() === 'nok') {
+              labelClass += ' label-nok';
+            } else if (labelName.match(/R \d+\.\d+/)) {
+              labelClass += ' label-requisito';
+            } else {
+              labelClass += ' label-checklist'; // default to purple
+            }
+            
+            return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+          }).join('');
       
-      html += `
-        <li class="evidence-item">
-          ${issue.title}<br>
-          <div class="evidence-labels">${labelTags}</div><br>
-          <a 
-            class="github-link" 
-            href="${issue.html_url}" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            aria-label="${issue.title && issue.title.includes(' - ') ? issue.title.split(' - ').slice(1).join(' - ') : issue.title}">
-            Consultar detalhe da evidência <span class="sr-only">(${issue.title})</span> (abre no GitHub)
-          </a>
-        </li>
-      `;
-    });
-    html += '</ul>';
+            html += `
+              <li class="evidence-item">
+                <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+                <div class="evidence-labels">${labelTags}</div>
+                ${processIssueContent(issue)}
+              </li>
+            `;
+          }
+        });
+      html += '</ul>';
     
-    html += '</div>';
+      html += '</div>';
+    }
   }
   return html;
 }
 
 function getRequirementStatus(issues) {
-  const statuses = issues.map(issue => issue.status);
+  // Verificar se issues é um array
+  if (!Array.isArray(issues)) {
+    return 'na'; // Se não for um array, retornar 'na'
+  }
+  
+  // Se não houver issues, retornar 'na'
+  if (issues.length === 0) {
+    return 'na';
+  }
+  
+  const statuses = issues.map(issue => issue && issue.status ? issue.status : 'NA');
   
   // Se todas as issues são NA, o requisito é NA
   if (statuses.every(s => s === 'NA')) {
@@ -880,12 +1029,12 @@ function getRequirementStatus(issues) {
     // Se só há N/A, já foi tratado acima
     return 'na';
   }
-  // Requisito só é OK se TODAS as issues aplicáveis forem OK
+  // Requisito é OK se TODAS as issues aplicáveis forem OK ou melhoria
   if (applicableStatuses.every(s => s === 'OK' || s === 'melhoria')) {
     return 'ok';
   }
   
-  // Qualquer issue NOK ou melhoria torna o requisito NOK
+  // Qualquer issue NOK torna o requisito NOK
   return 'nok';
 }
 
@@ -908,9 +1057,74 @@ function getOverallStatus(section) {
   return 'nok';
 }
 
-// Helper function to format status for display
-function formatStatusForDisplay(status) {
+// Função para contar o número de melhorias em uma seção
+function countMelhorias(section) {
+  if (!section) return 0;
+  
+  let count = 0;
+  
+  // Se section é um array (lista de issues), contar diretamente
+  if (Array.isArray(section)) {
+    for (const issue of section) {
+      if (issue && issue.status === 'melhoria') {
+        count++;
+      }
+    }
+    return count;
+  }
+  
+  // Se section é um objeto (estrutura de seção), iterar pelos requisitos
+  const requirements = Object.keys(section);
+  
+  for (const req of requirements) {
+    const issues = section[req];
+    // Verificar se issues é um array antes de iterar
+    if (Array.isArray(issues)) {
+      for (const issue of issues) {
+        if (issue && issue.status === 'melhoria') {
+          count++;
+        }
+      }
+    }
+  }
+  
+  return count;
+}
+
+// Helper function to format status for display at checklist level (no improvements text)
+function formatStatusForChecklistDisplay(status) {
   if (status === 'na') return 'N/A';
+  if (status === 'ok' || status === 'melhoria') {
+    return 'OK';
+  }
+  return status.toUpperCase();
+}
+
+// Helper function to format status for display at requirement level (with improvements text)
+function formatStatusForRequirementDisplay(status, section) {
+  if (status === 'na') return 'N/A';
+  if (status === 'ok' || status === 'melhoria') {
+    return 'OK';
+  }
+  return status.toUpperCase();
+}
+
+// Helper function to get improvement text for requirements
+function getImprovementText(section) {
+  const melhorias = section && typeof section === 'object' ? countMelhorias(section) : 0;
+  if (melhorias > 0) {
+    const melhoriaText = melhorias === 1 ? 'melhoria' : 'melhorias';
+    return ` (no entanto contém ${melhorias} ${melhoriaText} que se recomenda efetuar)`;
+  }
+  return '';
+}
+
+// Helper function to format status for display (legacy - keeping for compatibility)
+function formatStatusForDisplay(status, section) {
+  if (status === 'na') return 'N/A';
+  if (status === 'ok' || status === 'melhoria') {
+    return 'OK';
+  }
   return status.toUpperCase();
 }
 
@@ -976,32 +1190,27 @@ function calculateDetailedStats(section, checklistName) {
   
   // Se não há requisitos aplicáveis, mostrar 0%
   const percentage = applicableRequirements > 0 ? ((passedRequirements / applicableRequirements) * 100).toFixed(1) : '0.0';
-  
-  // Para avaliações automáticas, mostrar apenas as ferramentas
-  if (checklistName === 'Avaliação automática') {
-    return `
-    <p><strong>Ferramentas utilizadas:</strong></p>
-    <ul>
-      <li>AccessMonitor</li>
-      <li>RocketValidator</li>
-    </ul>
-    `;
-  }
 
-  // Para outras checklists, mostrar o nível de conformidade
-  return `
+  // Para avaliação automática, não mostrar nenhuma informação sobre requisitos
+  if (checklistName === 'Avaliação automática') {
+    return ``;
+    
+  } else {
+    // Para outras checklists, mostrar o nível de conformidade
+    return `
     <p><strong>Nível de conformidade:</strong></p>
     <ul>
       <li><strong>${checklistName}</strong>: ${percentage}% (${passedRequirements}/${applicableRequirements})
         <ul>
           <li>Requisitos avaliados: ${requirements.length} (${naCount > 0 ? `${naCount} N/A excluído${naCount > 1 ? 's' : ''}, ` : ''}${applicableRequirements} aplicáveis)</li>
-          <li>Requisitos OK: ${passedRequirements}</li>
+          ${passedRequirements > 0 ? `<li>Requisitos OK: ${passedRequirements}</li>` : ''}
           <li>Requisitos NOK: ${nokCount}</li>
           ${naCount > 0 ? `<li>Requisitos N/A: ${naCount}</li>` : ''}
         </ul>
       </li>
     </ul>
-  `;
+    `;
+  }
 }
 
 function hasIssues(section) {
@@ -1144,7 +1353,105 @@ function getRequirementTitle(requirement, checklistType) {
     return automaticRequirements[requirement];
   }
   
+  // Special cases to avoid duplication
+  if (checklistType === 'declaracao') {
+    return 'Declaração de Acessibilidade';
+  }
+  
+  // Special case for "Outras violações" to avoid duplication with section title
+  if (checklistType === 'outras' && requirement === 'Outras violações') {
+    return '';
+  }
+  
+  // Special case for "Testes de usabilidade" to avoid duplication with section title
+  if (checklistType === 'testesUsabilidade' && requirement === 'Testes de usabilidade') {
+    return '';
+  }
+  
   return requirement;
+}
+
+function processIssueContent(issue) {
+  if (!issue.body) return '';
+  
+  let content = issue.body;
+  
+  // Processar tags HTML de imagem ANTES de processar markdown
+  // Capturar tags <img> com diversos atributos
+  const htmlImageRegex = /<img\s+[^>]*src=["']([^"']+)["'][^>]*\/?>/gi;
+  const htmlImages = [];
+  let imageCounter = 0;
+  
+  // Substituir temporariamente as imagens HTML por placeholders que o Marked.js não vai tocar
+  content = content.replace(htmlImageRegex, (match, src) => {
+    // Extrair outros atributos como alt, width, height
+    const altMatch = match.match(/alt=["']([^"']*)["']/i);
+    const alt = altMatch ? altMatch[1] : 'Imagem';
+    
+    const imageHtml = `<img src="${src}" alt="${alt}" class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
+    htmlImages.push(imageHtml);
+    // Usar um formato de placeholder mais segúro que não seja afetado pelo markdown
+    return `\n\n<!-- IMAGE_PLACEHOLDER_${imageCounter++} -->\n\n`;
+  });
+  
+  // Configurar marked.js com opções personalizadas
+  marked.setOptions({
+    breaks: true,  // Converter quebras de linha simples em <br>
+    gfm: true,     // GitHub Flavored Markdown
+    sanitize: false, // Não sanitizar HTML (permitir imagens)
+    headerIds: false, // Não gerar IDs nos headers
+    mangle: false  // Não modificar URLs
+  });
+  
+  // Processar markdown para HTML usando marked.js
+  content = marked.parse(content);
+  
+  // Restaurar as imagens HTML processadas (procurar por comentários HTML)
+  htmlImages.forEach((imageHtml, index) => {
+    const placeholder = `<!-- IMAGE_PLACEHOLDER_${index} -->`;
+    content = content.replace(placeholder, imageHtml);
+    // Também verificar se ficou dentro de tags <p>
+    const wrappedPlaceholder = `<p>${placeholder}</p>`;
+    content = content.replace(wrappedPlaceholder, imageHtml);
+  });
+  
+  // Aplicar classe CSS personalizada às imagens markdown (que foram processadas pelo marked.js)
+  content = content.replace(/<img([^>]*)>/g, (match, attributes) => {
+    // Só adicionar a classe se não tiver já
+    if (!attributes.includes('class="evidence-image"')) {
+      return `<img${attributes} class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
+    }
+    return match;
+  });
+  
+  // Verificar se ainda existem placeholders não substituídos e removê-los
+  content = content.replace(/<!-- IMAGE_PLACEHOLDER_\d+ -->/g, '');
+  
+  return `<div class="issue-content">${content}</div>`;
+}
+
+function calculateProgress(dataForCalculation) {
+  const allSections = {...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao};
+  const requirements = Object.keys(allSections);
+  const totalRequirements = requirements.length;
+  
+  if (totalRequirements === 0) return { percentage: 0, audited: 0, total: 0 };
+  
+  let auditedRequirements = 0;
+  requirements.forEach(req => {
+    const status = getRequirementStatus(allSections[req]);
+    if (status !== 'na') {
+      auditedRequirements++;
+    }
+  });
+  
+  const percentage = totalRequirements > 0 ? Math.round((auditedRequirements / totalRequirements) * 100) : 0;
+  
+  return {
+    percentage: percentage,
+    audited: auditedRequirements,
+    total: totalRequirements
+  };
 }
 
 function downloadFile(content, filename) {
@@ -1155,4 +1462,4 @@ function downloadFile(content, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-} 
+}
