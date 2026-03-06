@@ -452,7 +452,36 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
     .skip-link { position: absolute; top: -40px; left: 0; background: #000; color: white; padding: 8px; z-index: 100; transition: top 0.3s ease; }
     .skip-link:focus { top: 0; }
     .visually-hidden-focusable:not(:focus):not(:focus-within) { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
-    .container { max-width: 900px; }
+    body { 
+      background-color: #ffffff; 
+      padding-top: 2rem; 
+      padding-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 900px;
+      width: 100%;
+      background-color: transparent; 
+      padding-top: 1rem;
+      padding-bottom: 2rem;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    .report-footer {
+      width: 100%;
+      align-self: stretch;
+      background-color: #ffffff;
+      color: #4a5568;
+      text-align: center;
+      padding: 1.25rem 1rem;
+      font-size: 0.8rem;
+      border-top: 1px solid #e0e0e0;
+      margin-top: auto;
+    }
+    .report-footer p { margin: 0.2rem 0; }
     h1 { font-size: 1.8rem; margin-bottom: 1.5rem; }
     .status-ok { color: #ffffff; background-color: #0E8A16; padding: 0.25rem 0.5rem; border-radius: 50px; font-weight: 500; display: inline-block; }
     .status-nok { color: #ffffff; background-color: #B60205; padding: 0.25rem 0.5rem; border-radius: 50px; font-weight: 500; display: inline-block; }
@@ -482,7 +511,10 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
     .report-section { border-bottom: 3px solid #000000; padding-bottom: 2rem; margin-bottom: 2rem; }
     .report-section:last-of-type { border-bottom: none; }
     .checklist-section { border-bottom: 3px solid #000000; padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
-    .avaliacao-manual-section { border-bottom: 1px solid #000000; padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+    .avaliacao-manual-section { padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+    .checklist-section:last-of-type { border-bottom: none; }
+    .issue-link { color: #1e3a8a; text-decoration: none; }
+    .issue-link:hover { text-decoration: underline; color: #1e40af; }
     table.table caption { caption-side: top; text-align: left; padding-bottom: 0.5rem; font-weight: 600; color: #000; }
   </style>
 </head>
@@ -522,19 +554,19 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
               ${hasIssues(grouped.chk10) ? `
               <li><a href="#checklist-10-aspetos">Checklist 10 aspetos</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.chk10).filter(req => grouped.chk10[req].length > 0).map(req => `<li><a href="#req-chk10-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'chk10')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.chk10).filter(req => grouped.chk10[req].length > 0).map(req => `<li><a href="#req-chk10-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'chk10'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.conteudo) ? `
               <li><a href="#checklist-conteudo">Checklist Conteúdo</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.conteudo).filter(req => grouped.conteudo[req].length > 0).map(req => `<li><a href="#req-conteudo-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'conteudo')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.conteudo).filter(req => grouped.conteudo[req].length > 0).map(req => `<li><a href="#req-conteudo-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'conteudo'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.transacao) ? `
               <li><a href="#checklist-transacao">Checklist Transação</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.transacao).filter(req => grouped.transacao[req].length > 0).map(req => `<li><a href="#req-transacao-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'transacao')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.transacao).filter(req => grouped.transacao[req].length > 0).map(req => `<li><a href="#req-transacao-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'transacao'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.outras) ? '<li><a href="#outras-violacoes">Outras violações</a></li>' : ''}
@@ -626,7 +658,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
 
           declHtml += `
             <li class="evidence-item">
-              <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+              <p><span class="visually-hidden">evidência: </span><a href="${issue.html_url}" class="issue-link" target="_blank" rel="noopener noreferrer">issue #${issue.number}</a> <strong>${getCleanIssueTitle(issue)}</strong></p>
               <div class="evidence-labels">${labelTags}</div>
               ${processIssueContent(issue)}
             </li>`;
@@ -670,7 +702,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
 
           autoHtml += `
             <li class="evidence-item">
-              <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+              <p><span class="visually-hidden">evidência: </span><a href="${issue.html_url}" class="issue-link" target="_blank" rel="noopener noreferrer">issue #${issue.number}</a> <strong>${getCleanIssueTitle(issue)}</strong></p>
               <div class="evidence-labels">${labelTags}</div>
               ${processIssueContent(issue)}
             </li>`;
@@ -783,16 +815,14 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         <li><span class="label-tag label-auto"><span class="sr-only">etiqueta: </span>av auto</span> - permite construir o capítulo "Avaliação automática"</li>
         <li><span class="label-tag label-checklist"><span class="sr-only">etiqueta: </span>testes usabilidade</span> - permite construir o capítulo "Testes de usabilidade"</li>
       </ul>
-    </section>
-  </div>`);
+    </section>`);
 
-    // FOOTER
+    // FOOTER (fora do container, largura 100%)
     htmlParts.push(`
-  <footer class="mt-5 pt-4 text-center text-muted">
-    <div class="container">
-      <p>© 2026 ARTE - Agência para a Reforma Tecnológica do Estado, I.P. Todos os Direitos Reservados.</p>
-      <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
-    </div>
+  </div>
+  <footer class="report-footer">
+    <p>© 2026 ARTE - Agência para a Reforma Tecnológica do Estado, I.P. Todos os Direitos Reservados.</p>
+    <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
@@ -847,7 +877,7 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
       // Only add the heading if there's a title to display
       if (displayTitle) {
         const reqId = `req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}`;
-        html += `<h4 class="requirement-title" id="${reqId}">${displayTitle}</h4>\n`;
+        html += `<h4 class="requirement-title" id="${reqId}">${plainTitle(displayTitle)}</h4>\n`;
       }
 
       html += `<div class="requirement-content">\n`;
@@ -897,13 +927,9 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
               return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
             }).join('');
 
-            const cleanTitle = issue.title && issue.title.split(' - ').length >= 3
-              ? issue.title.split(' - ').slice(2).join(' - ')
-              : issue.title;
-
             html += `
               <li class="evidence-item">
-                <p><span class="visually-hidden">evidência: </span><strong>${cleanTitle}</strong></p>
+                <p><span class="visually-hidden">evidência: </span><a href="${issue.html_url}" class="issue-link" target="_blank" rel="noopener noreferrer">issue #${issue.number}</a> <strong>${getCleanIssueTitle(issue)}</strong></p>
                 <div class="evidence-labels">${labelTags}</div>
                 ${processIssueContent(issue)}
               </li>`;
@@ -1287,6 +1313,55 @@ function getRequirementTitle(requirement, checklistType) {
   return requirement;
 }
 
+
+// Escapa caracteres HTML especiais em texto proveniente do GitHub
+// (títulos de issues, nomes de labels, etc.) para evitar injeção de HTML.
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Helper para extrair o título limpo de uma issue (remove prefixo "R001 - ORG - ")
+function getCleanIssueTitle(issue) {
+  if (!issue || !issue.title) return '';
+  const parts = issue.title.split(' - ');
+  const raw = parts.length >= 3 ? parts.slice(2).join(' - ') : issue.title;
+  return escapeHtml(raw);
+}
+
+// Remove tags HTML (tanto reais como codificadas) para uso em texto puro
+// (índice, títulos de secção, etc.) onde não deve aparecer notação de tags
+function plainTitle(title) {
+  if (!title) return '';
+  return title
+    .replace(/<\/?[a-z][\s\S]*?>/gi, '')        // remove tags HTML reais (e.g. <h1>)
+    .replace(/&lt;\/[a-z0-9]+&gt;/gi, '')       // remove closing encoded tags (e.g. &lt;/h1&gt; → '')
+    .replace(/&lt;([a-z0-9]+)&gt;/gi, '$1');   // opening encoded tags (e.g. &lt;h1&gt; → h1)
+}
+
+
+// ou HTML raw das issues quebrem a estrutura do relatório gerado.
+// Usa o DOMParser do browser para normalizar o HTML.
+function sanitizeHtml(html) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div id="root">${html}</div>`, 'text/html');
+    const root = doc.getElementById('root');
+    if (root) {
+      return root.innerHTML;
+    }
+    return html;
+  } catch (e) {
+    console.warn('sanitizeHtml failed, returning original:', e);
+    return html;
+  }
+}
+
 function processIssueContent(issue) {
   if (!issue.body) return '';
 
@@ -1294,12 +1369,16 @@ function processIssueContent(issue) {
     let content = issue.body;
 
     // Processar tags HTML de imagem ANTES de processar markdown
-    const htmlImageRegex = /<img\s+[^]*src=["']([^"']+)["'][^]*\/?>/gi;
+    // Usar regex seguro (sem [^]* que causa backtracking catastrófico em conteúdo grande)
+    const htmlImageRegex = /<img\s+(?:[^>"']*|"[^"]*"|'[^']*')*\/?>/gi;
     const htmlImages = [];
     let imageCounter = 0;
 
-    content = content.replace(htmlImageRegex, (match, src) => {
-      const altMatch = match.match(/alt=["']([^"']*)["']/i);
+    content = content.replace(htmlImageRegex, (match) => {
+      const srcMatch = match.match(/src=["']([^"']+)["']/i);
+      if (!srcMatch) return match; // Não é uma img com src, manter original
+      const src = srcMatch[1];
+      const altMatch = match.match(/alt=["']([^"']*)['""]/i);
       const alt = altMatch ? altMatch[1] : 'Imagem';
 
       const imageHtml = `<img src="${src}" alt="${alt}" class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
@@ -1307,7 +1386,7 @@ function processIssueContent(issue) {
       return `\n\n<!--IMAGE_PLACEHOLDER_${imageCounter++}-->\n\n`;
     });
 
-    // Configurar marked.js
+    // Configurar marked.js e converter markdown para HTML
     if (typeof marked !== 'undefined') {
       marked.setOptions({
         breaks: true,
@@ -1319,19 +1398,27 @@ function processIssueContent(issue) {
       content = marked.parse(content);
     } else {
       console.warn('Marked library not found, returning raw content');
-      // Simple fallback for newlines if marked is missing
-      content = content.replace(/\n/g, '<br>');
+      // Escapar HTML e converter newlines se marked não estiver disponível
+      content = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
     }
 
-    // Restaurar as imagens
+    // Restaurar as imagens ANTES de sanitizar (DOMParser remove comentários HTML)
+    // Verificar primeiro a versão com <p> envolvente para não deixar tags <p> vazias
     htmlImages.forEach((imageHtml, index) => {
       const placeholder = `<!--IMAGE_PLACEHOLDER_${index}-->`;
-      content = content.replace(placeholder, imageHtml);
       const wrappedPlaceholder = `<p>${placeholder}</p>`;
-      content = content.replace(wrappedPlaceholder, imageHtml);
+      if (content.includes(wrappedPlaceholder)) {
+        content = content.replace(wrappedPlaceholder, imageHtml);
+      } else {
+        content = content.replace(placeholder, imageHtml);
+      }
     });
 
-    // Aplicar classe CSS personalizada às imagens markdown
+    // Aplicar classe CSS personalizada às imagens markdown restantes
     content = content.replace(/<img([^>]*)>/g, (match, attributes) => {
       if (!attributes.includes('class="evidence-image"')) {
         return `<img${attributes} class="evidence-image" style="max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">`;
@@ -1339,14 +1426,23 @@ function processIssueContent(issue) {
       return match;
     });
 
-    content = content.replace(/<!-- IMAGE_PLACEHOLDER_\d+ -->/g, '');
+    // Sanitizar o HTML para garantir estrutura bem-formada APÓS restaurar as imagens.
+    // Isto evita que conteúdo HTML das issues (p.ex. </ul>, </li>, </div> soltos)
+    // quebre a estrutura do relatório gerado.
+    content = sanitizeHtml(content);
 
     return `<div class="issue-content">${content}</div>`;
   } catch (e) {
     console.error('Error processing issue content:', e);
-    return `<div class="issue-content"><p class="text-danger">Erro ao processar conteúdo: ${e.message}</p><pre>${issue.body}</pre></div>`;
+    // No fallback, mostrar conteúdo bruto de forma segura
+    const safeBody = (issue.body || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return `<div class="issue-content"><pre style="white-space: pre-wrap; word-break: break-word;">${safeBody}</pre></div>`;
   }
 }
+
 
 function calculateProgress(dataForCalculation) {
   const allSections = { ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao };
@@ -1373,11 +1469,14 @@ function calculateProgress(dataForCalculation) {
 }
 
 function downloadFile(content, filename) {
-  const blob = new Blob([content], { type: 'text/html' });
+  const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
+  link.href = url;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  // Revogar o URL após o download para libertar memória
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

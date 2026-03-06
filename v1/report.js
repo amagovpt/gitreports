@@ -6,20 +6,20 @@ document.getElementById('generateReportBtn').addEventListener('click', generateR
 document.getElementById('generateDeclarationBtn').addEventListener('click', generateDeclarationReport);
 
 // Auto-load repositories when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   fetchRepositories();
-  
+
   // Enable buttons when a repository is selected
   const repoSelect = document.getElementById('repoSelect');
   const generateBtn = document.getElementById('generateReportBtn');
   const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
-  
-  repoSelect.addEventListener('change', function() {
+
+  repoSelect.addEventListener('change', function () {
     const isRepoSelected = this.value && this.value !== 'Escolha o repositório para gerar o relatório';
-    
+
     generateBtn.disabled = !isRepoSelected;
     generateDeclarationBtn.disabled = !isRepoSelected;
-    
+
     if (isRepoSelected) {
       generateBtn.classList.remove('disabled');
       generateDeclarationBtn.classList.remove('disabled');
@@ -34,7 +34,7 @@ async function fetchRepositories() {
   const repoSelect = document.getElementById('repoSelect');
   const generateBtn = document.getElementById('generateReportBtn');
   const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
-  
+
   try {
     // Show loading state
     repoSelect.innerHTML = '<option value="">A carregar repositórios...</option>';
@@ -43,30 +43,30 @@ async function fetchRepositories() {
     generateBtn.classList.add('disabled');
     generateDeclarationBtn.disabled = true;
     generateDeclarationBtn.classList.add('disabled');
-    
+
     const url = `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=name`;
     const response = await fetch(url, {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const repos = await response.json();
-    
+
     // Filter repositories that start with "Report_" or "reports_" (case insensitive)
-    const reportRepos = repos.filter(repo => 
-      repo.name.toLowerCase().startsWith('report_') || 
+    const reportRepos = repos.filter(repo =>
+      repo.name.toLowerCase().startsWith('report_') ||
       repo.name.toLowerCase().startsWith('reports_')
     );
-    
+
     // Populate select with filtered repositories
     let options = '<option value="">Escolha o repositório para gerar o relatório</option>';
     reportRepos.forEach(repo => {
       options += `<option value="${repo.name}">${repo.name}</option>`;
     });
-    
+
     repoSelect.innerHTML = options;
     repoSelect.disabled = false;
     // Keep buttons disabled until a repository is selected
@@ -74,7 +74,7 @@ async function fetchRepositories() {
     generateBtn.classList.add('disabled');
     generateDeclarationBtn.disabled = true;
     generateDeclarationBtn.classList.add('disabled');
-    
+
   } catch (error) {
     console.error('Erro ao carregar repositórios:', error);
     repoSelect.innerHTML = '<option value="">Erro ao carregar repositórios</option>';
@@ -90,42 +90,42 @@ async function fetchReadmeInfo(repoName) {
     const response = await fetch(url, {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
     });
-    
+
     if (!response.ok) {
       return null; // No README found
     }
-    
+
     const data = await response.json();
     const content = decodeURIComponent(escape(atob(data.content))); // Decode base64 with proper UTF-8 handling
-    
+
     // Extract info from README with flexible patterns
-    const dateMatch = content.match(/\*\*Data:\*\*\s*(\d{1,2} de \w+ de \d{4})|Data:\s*(\d{1,2} de \w+ de \d{4})|(\d{1,2} de \w+ de \d{4})/);    
+    const dateMatch = content.match(/\*\*Data:\*\*\s*(\d{1,2} de \w+ de \d{4})|Data:\s*(\d{1,2} de \w+ de \d{4})|(\d{1,2} de \w+ de \d{4})/);
     // Extract organization from header (# title)
     const organizationMatch = content.match(/^#\s*(.+)$/m);
-    
+
     // Extract URL
     const urlMatch = content.match(/[-*]\s*URL:\s*([^\n\r]+)/i);
-    
+
     // Extract owner/proprietário (handle different spacing and formats)
     const ownerMatch = content.match(/[-*]\s*Propriedade:\s*([^\n\r]+)/i) ||
-                      content.match(/Propriedade:\s*([^\n\r]+)/i) ||
-                      content.match(/[-*]\s*Proprietário:\s*([^\n\r]+)/i) ||
-                      content.match(/Proprietário:\s*([^\n\r]+)/i);
-    
+      content.match(/Propriedade:\s*([^\n\r]+)/i) ||
+      content.match(/[-*]\s*Proprietário:\s*([^\n\r]+)/i) ||
+      content.match(/Proprietário:\s*([^\n\r]+)/i);
+
     // Extract seal type (candidatura a)
     const sealMatch = content.match(/[-*]\s*Candidatura:\s*([^\n\r]+)/i) ||
-                     content.match(/Candidatura:\s*([^\n\r]+)/i) ||
-                     content.match(/[-*]\s*Candidatura a:\s*([^\n\r]+)/i) ||
-                     content.match(/Candidatura a:\s*([^\n\r]+)/i);
-    
+      content.match(/Candidatura:\s*([^\n\r]+)/i) ||
+      content.match(/[-*]\s*Candidatura a:\s*([^\n\r]+)/i) ||
+      content.match(/Candidatura a:\s*([^\n\r]+)/i);
+
     // Extract creation date
     const creationDateMatch = content.match(/[-*]\s*Data de criação:\s*([^\n\r]+)/i) ||
-                           content.match(/Data de criação:\s*([^\n\r]+)/i);
-    
+      content.match(/Data de criação:\s*([^\n\r]+)/i);
+
     // Extract last update date
     const lastUpdateMatch = content.match(/[-*]\s*Última atualização:\s*([^\n\r]+)/i) ||
-                          content.match(/Última atualização:\s*([^\n\r]+)/i);
-    
+      content.match(/Última atualização:\s*([^\n\r]+)/i);
+
     const extractedInfo = {
       date: dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3]) : null,
       organization: organizationMatch ? organizationMatch[1].trim() : null,
@@ -142,63 +142,94 @@ async function fetchReadmeInfo(repoName) {
   }
 }
 
+async function fetchAll(url) {
+  let allItems = [];
+  let nextUrl = url;
+  let pageCount = 0;
+  const maxPages = 50;
+
+  while (nextUrl && pageCount < maxPages) {
+    const response = await fetch(nextUrl, {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+    });
+    if (!response.ok) throw new Error(`Erro na API GitHub (${response.status}): ${response.statusText}`);
+    const items = await response.json();
+    if (Array.isArray(items)) {
+      allItems = allItems.concat(items);
+    } else {
+      if (items.message) throw new Error(`Erro da API GitHub: ${items.message}`);
+      break;
+    }
+    const linkHeader = response.headers.get('Link');
+    const currentUrl = nextUrl;
+    nextUrl = null;
+    if (linkHeader) {
+      const links = linkHeader.split(',');
+      const nextLink = links.find(link => link.includes('rel="next"'));
+      if (nextLink) {
+        const match = nextLink.match(/<(.*)>/);
+        if (match && match[1] !== currentUrl) nextUrl = match[1];
+      }
+    }
+    pageCount++;
+  }
+  return allItems;
+}
+
 async function fetchIssues(repoName, includeClosedIssues = false) {
   const state = includeClosedIssues ? 'all' : 'open';
-  const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=${state}&per_page=100`, {
-    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-  });
-  
-  if (!response.ok) throw new Error('Falha ao procurar issues do repositório.');
-  return await response.json();
+  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/issues?state=${state}&per_page=100`;
+  return await fetchAll(url);
 }
+
 
 async function generateReport() {
   const repoSelect = document.getElementById('repoSelect');
   const repoName = repoSelect.value;
   const statusDiv = document.getElementById('status');
   const generateBtn = document.getElementById('generateReportBtn');
-  
+
   if (!repoName || repoName === 'Escolha o repositório para gerar o relatório' || repoName === '') {
     statusDiv.className = 'status-message status-error';
     statusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Por favor selecione um repositório.';
     statusDiv.setAttribute('aria-live', 'assertive');
     return;
   }
-  
+
   // Add loading state
   generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>A gerar relatório...';
   generateBtn.disabled = true;
   generateBtn.classList.add('disabled');
-  
+
   statusDiv.className = 'status-message status-info';
   statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A procurar dados do repositório...';
   statusDiv.setAttribute('aria-live', 'polite');
-  
+
   try {
     // Fetch both issues (including closed) and README in parallel
     const [issues, readmeInfo] = await Promise.all([
       fetchIssues(repoName, true), // Include closed issues for calculation
       fetchReadmeInfo(repoName)
     ]);
-    
+
     statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A processar dados e gerar relatório...';
-    
+
     // Criar uma cópia das issues para cálculo de percentagens (incluindo OK)
     const issuesForCalculation = [...issues];
     // Agrupar issues para cálculo (sem filtrar OK)
     const groupedForCalculation = groupIssues(issuesForCalculation, false);
-    
+
     // Filtrar issues OK para exibição no relatório
     const groupedForDisplay = groupIssues(issues, true); // Filter out OK issues
     const html = generateReportHTML(groupedForDisplay, repoName, readmeInfo, groupedForCalculation);
-    
+
     // Extract number from repo name (e.g., "Report_001" -> "001", "reports_123" -> "123")
     const repoNumberMatch = repoName.match(/(?:reports?_)(\d+)/i);
     const repoNumber = repoNumberMatch ? repoNumberMatch[1].padStart(3, '0') : '001';
     const filename = `relatorio_report_${repoNumber}.html`;
-    
+
     downloadFile(html, filename);
-    
+
     statusDiv.className = 'status-message status-success';
     statusDiv.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> Relatório gerado com sucesso! Consulte a sua pasta de transferências.`;
     statusDiv.setAttribute('aria-live', 'polite');
@@ -218,47 +249,47 @@ async function generateDeclarationReport() {
   const repoName = repoSelect.value;
   const statusDiv = document.getElementById('status');
   const generateBtn = document.getElementById('generateDeclarationBtn');
-  
+
   if (!repoName || repoName === 'Escolha o repositório para gerar o relatório' || repoName === '') {
     statusDiv.className = 'status-message status-error';
     statusDiv.innerHTML = '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Por favor selecione um repositório.';
     statusDiv.setAttribute('aria-live', 'assertive');
     return;
   }
-  
+
   // Add loading state
   generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>A gerar relatório...';
   generateBtn.disabled = true;
   generateBtn.classList.add('disabled');
-  
+
   statusDiv.className = 'status-message status-info';
   statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A procurar dados do repositório...';
   statusDiv.setAttribute('aria-live', 'polite');
-  
+
   try {
     // Fetch both issues (including closed) and README in parallel
     const [issues, readmeInfo] = await Promise.all([
       fetchIssues(repoName, true), // Include closed issues for declaration report
       fetchReadmeInfo(repoName)
     ]);
-    
+
     statusDiv.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> A processar dados e gerar relatório...';
-    
+
     // Criar uma cópia das issues para cálculo de percentagens (incluindo OK)
     const issuesForCalculation = [...issues];
     // Agrupar issues para cálculo (sem filtrar OK)
     const groupedForCalculation = groupIssues(issuesForCalculation, false);
-    
+
     const grouped = groupIssues(issues, false); // Don't filter out OK issues
     const html = generateReportHTML(grouped, repoName, readmeInfo, groupedForCalculation);
-    
+
     // Extract number from repo name (e.g., "Report_001" -> "001", "reports_123" -> "123")
     const repoNumberMatch = repoName.match(/(?:reports?)_(\d+)/i);
     const repoNumber = repoNumberMatch ? repoNumberMatch[1].padStart(3, '0') : '001';
     const filename = `declaracao_acessibilidade_${repoNumber}.html`;
-    
+
     downloadFile(html, filename);
-    
+
     statusDiv.className = 'status-message status-success';
     statusDiv.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> Relatório para Declaração de Acessibilidade gerado com sucesso! Consulte a sua pasta de transferências.`;
     statusDiv.setAttribute('aria-live', 'polite');
@@ -274,7 +305,7 @@ async function generateDeclarationReport() {
 }
 
 function groupIssues(issues, filterOkIssues = true) {
-  
+
   const grouped = {
     'chk10': {},
     'conteudo': {},
@@ -308,20 +339,20 @@ function groupIssues(issues, filterOkIssues = true) {
 
     // Determine status - verificar N/A primeiro para evitar classificação incorreta
     let status = 'NOK';
-    
+
     // Verificar várias variações do label N/A
-    const naLabels = issue.labels.filter(l => 
-      l.name.toLowerCase().match(/^n[\/\.]?a$/i) || 
+    const naLabels = issue.labels.filter(l =>
+      l.name.toLowerCase().match(/^n[\/\.]?a$/i) ||
       l.name.toLowerCase() === 'na' ||
       l.name.toLowerCase() === 'n/a' ||
       l.name.toLowerCase() === 'n.a'
     );
-    
+
     if (naLabels.length > 0) status = 'NA';
     else if (issue.labels.some(l => l.name === 'OK' || l.name.toLowerCase() === 'ok')) status = 'OK';
-    else if (issue.labels.some(l => 
-      l.name === 'melhoria' || 
-      l.name === 'Melhoria' || 
+    else if (issue.labels.some(l =>
+      l.name === 'melhoria' ||
+      l.name === 'Melhoria' ||
       l.name.toLowerCase() === 'melhoria'
     )) status = 'melhoria';
 
@@ -338,17 +369,17 @@ function groupIssues(issues, filterOkIssues = true) {
       groupKey = 'declaracao';
     } else {
       // Para outros tipos, usar o requirement ou o título padrão
-      groupKey = requirementName || 
-        (checklistType === 'outras' ? 'Outras violações' : 
-         checklistType === 'automatic' ? 'Avaliação automática' :
-         checklistType === 'testesUsabilidade' ? 'Testes de usabilidade' : null);
+      groupKey = requirementName ||
+        (checklistType === 'outras' ? 'Outras violações' :
+          checklistType === 'automatic' ? 'Avaliação automática' :
+            checklistType === 'testesUsabilidade' ? 'Testes de usabilidade' : null);
     }
-    
+
     if (groupKey && !grouped[checklistType][groupKey]) {
       grouped[checklistType][groupKey] = [];
     }
     if (groupKey) {
-      grouped[checklistType][groupKey].push({...issue, status});
+      grouped[checklistType][groupKey].push({ ...issue, status });
     }
   });
 
@@ -359,8 +390,8 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
   // Se groupedForCalculation não for fornecido, usar o mesmo grouped para cálculos
   const dataForCalculation = groupedForCalculation || grouped;
   // Use README info if available, otherwise fallback to defaults  
-  const currentDateRaw = new Date().toLocaleDateString('pt-PT', { 
-    year: 'numeric', 
+  const currentDateRaw = new Date().toLocaleDateString('pt-PT', {
+    year: 'numeric',
     month: 'long'
   });
   // Capitalize first letter of month
@@ -426,9 +457,36 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       white-space: nowrap !important;
       border: 0 !important;
     }
+    body { 
+      background-color: #ffffff;
+      padding-top: 2rem;
+      padding-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
     .container {
       max-width: 900px;
+      width: 100%;
+      background-color: transparent;
+      padding-top: 1rem;
+      padding-bottom: 2rem;
+      padding-left: 1rem;
+      padding-right: 1rem;
     }
+    .report-footer {
+      width: 100%;
+      align-self: stretch;
+      background-color: #ffffff;
+      color: #4a5568;
+      text-align: center;
+      padding: 1.25rem 1rem;
+      font-size: 0.8rem;
+      border-top: 1px solid #e0e0e0;
+      margin-top: auto;
+    }
+    .report-footer p { margin: 0.2rem 0; }
     h1 {
       font-size: 1.8rem;
       margin-bottom: 1.5rem;
@@ -573,25 +631,23 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
       padding-bottom: 2rem;
       margin-bottom: 2rem;
     }
-    .report-section:last-child {
+    .report-section:last-of-type,
+    .avaliacao-manual-section:last-of-type,
+    .checklist-section:last-of-type {
       border-bottom: none;
     }
-    .avaliacao-manual-section:last-child {
-      border-bottom: none;
+    .avaliacao-manual-section {
+      padding-bottom: 1.5rem;
+      margin-bottom: 1.5rem;
     }
     .checklist-section {
       border-bottom: 3px solid #000000;
       padding-bottom: 1.5rem;
       margin-bottom: 1.5rem;
     }
-    .avaliacao-manual-section {
-      border-bottom: 1px solid #000000;
-      padding-bottom: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-    .checklist-section:last-child {
-      border-bottom: none;
-    }
+    
+    .issue-link { color: #1e3a8a; text-decoration: none; }
+    .issue-link:hover { text-decoration: underline; color: #1e40af; }
 
     #avaliacao-manual {
       border-bottom: 1px solid #000000 !important;
@@ -633,25 +689,25 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
           <li><a href="#introducao">Introdução</a></li>
           ${hasIssues(grouped.declaracao) ? '<li><a href="#declaracao">Declaração de Acessibilidade</a></li>' : ''}
           ${hasIssues(grouped.automatic) ? '<li><a href="#avaliacao-automatica">Avaliação automática</a></li>' : ''}
-          ${hasIssues({...grouped.chk10, ...grouped.conteudo, ...grouped.transacao}) ? `
+          ${hasIssues({ ...grouped.chk10, ...grouped.conteudo, ...grouped.transacao }) ? `
           <li><a href="#avaliacao-manual">Avaliação manual</a>
             <ul class="indent-list">
               ${hasIssues(grouped.chk10) ? `
               <li><a href="#checklist-10-aspetos">Checklist 10 aspetos</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.chk10).map(req => `<li><a href="#req-chk10-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'chk10')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.chk10).filter(req => grouped.chk10[req].length > 0).map(req => `<li><a href="#req-chk10-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'chk10'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.conteudo) ? `
               <li><a href="#checklist-conteudo">Checklist Conteúdo</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.conteudo).map(req => `<li><a href="#req-conteudo-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'conteudo')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.conteudo).filter(req => grouped.conteudo[req].length > 0).map(req => `<li><a href="#req-conteudo-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'conteudo'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.transacao) ? `
               <li><a href="#checklist-transacao">Checklist Transação</a>
                 <ul class="indent-list">
-                  ${sortRequirements(grouped.transacao).map(req => `<li><a href="#req-transacao-${req.replace(/\s+/g, '-').toLowerCase()}">${getRequirementTitle(req, 'transacao')}</a></li>`).join('')}
+                  ${sortRequirements(grouped.transacao).filter(req => grouped.transacao[req].length > 0).map(req => `<li><a href="#req-transacao-${req.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(getRequirementTitle(req, 'transacao'))}</a></li>`).join('')}
                 </ul>
               </li>` : ''}
               ${hasIssues(grouped.outras) ? '<li><a href="#outras-violacoes">Outras violações</a></li>' : ''}
@@ -678,16 +734,16 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         <tbody>
           <tr>
             <td>Avaliação Automática</td>
-            <td><span class="status-${getOverallStatus(grouped.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(grouped.automatic))}</span></td>
+            <td><span class="status-${getOverallStatus(dataForCalculation.automatic)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus(dataForCalculation.automatic))}</span></td>
           </tr>
           <tr>
             <td>Avaliação Manual</td>
-            <td><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span></td>
+            <td><span class="status-${getOverallStatus({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao })}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao }))}</span></td>
           </tr>
         </tbody>
       </table>
 
-      ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? `
+      ${hasIssues({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao }) ? `
       <p>Das avaliações manuais efetuadas obtiveram-se os resultados que se sintetizam na tabela seguinte.</p>` : ''}
       <table class="table table-bordered">
         <caption>Níveis de conformidade das avaliações manuais</caption>
@@ -699,11 +755,11 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
           </tr>
         </thead>
         <tbody>`
-      const chk10Status = getPassStatus(dataForCalculation.chk10) === 'passa' ? 'ok' : 'nok';
-      const conteudoStatus = getPassStatus(dataForCalculation.conteudo) === 'passa' ? 'ok' : 'nok';
-      const transacaoStatus = getPassStatus(dataForCalculation.transacao) === 'passa' ? 'ok' : 'nok';
+  const chk10Status = getPassStatus(dataForCalculation.chk10) === 'passa' ? 'ok' : 'nok';
+  const conteudoStatus = getPassStatus(dataForCalculation.conteudo) === 'passa' ? 'ok' : 'nok';
+  const transacaoStatus = getPassStatus(dataForCalculation.transacao) === 'passa' ? 'ok' : 'nok';
 
-      html += `${hasIssues(dataForCalculation.chk10) ? `
+  html += `${hasIssues(dataForCalculation.chk10) ? `
           <tr>
             <td>10 aspetos</td>
             <td>${calculateConformance(dataForCalculation.chk10)}</td>
@@ -724,7 +780,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         </tbody>
       </table>
       
-      ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? '<p><strong>Nota:</strong> para passar os requisitos do Selo é necessário alcançar um nível de conformidade superior ou igual a 75% em cada uma das 3 checklists.</p>' : ''}
+      ${hasIssues({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao }) ? '<p><strong>Nota:</strong> para passar os requisitos do Selo é necessário alcançar um nível de conformidade superior ou igual a 75% em cada uma das 3 checklists.</p>' : ''}
       
       ${getOverallStatus(dataForCalculation.declaracao) === 'nok' ? '<p>Verificámos também que a Declaração de Acessibilidade não se encontra corretamente afixada. Consulte o capítulo "Declaração de acessibilidade" para saber o que tem de corrigir.</p>' : ''}
     </section>
@@ -738,37 +794,37 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
        <p>Lista de evidências recolhidas:</p>
        <ul class="evidence-list">
          ${Object.values(grouped.declaracao).flat().map(issue => {
-           const labelTags = issue.labels.map(label => {
-             const labelName = label.name;
-             let labelClass = 'label-tag';
-             
-             if (labelName.includes('dec') || labelName.includes('a11y')) {
-               labelClass += ' label-declaracao';
-             } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
-               labelClass += ' label-checklist';
-             } else if (labelName.toLowerCase().includes('melhoria')) {
-               labelClass += ' label-melhoria';
-             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
-               labelClass += ' label-na';
-             } else if (labelName.toLowerCase() === 'ok') {
-               labelClass += ' label-ok';
-             } else if (labelName.toLowerCase() === 'nok') {
-               labelClass += ' label-nok';
-             } else {
-               labelClass += ' label-checklist';
-             }
-             
-             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
-           }).join('');
-           
-           return `
+    const labelTags = issue.labels.map(label => {
+      const labelName = label.name;
+      let labelClass = 'label-tag';
+
+      if (labelName.includes('dec') || labelName.includes('a11y')) {
+        labelClass += ' label-declaracao';
+      } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
+        labelClass += ' label-checklist';
+      } else if (labelName.toLowerCase().includes('melhoria')) {
+        labelClass += ' label-melhoria';
+      } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+        labelClass += ' label-na';
+      } else if (labelName.toLowerCase() === 'ok') {
+        labelClass += ' label-ok';
+      } else if (labelName.toLowerCase() === 'nok') {
+        labelClass += ' label-nok';
+      } else {
+        labelClass += ' label-checklist';
+      }
+
+      return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+    }).join('');
+
+    return `
              <li class="evidence-item">
-               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <p><span class="visually-hidden">evidência: </span><strong>${getCleanIssueTitle(issue)}</strong></p>
                <div class="evidence-labels">${labelTags}</div>
-               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden"> - ${getCleanIssueTitle(issue)}</span> (abre no GitHub)</a></p>
              </li>
            `;
-         }).join('')}
+  }).join('')}
        </ul>
      </section>` : ''}
 
@@ -781,46 +837,46 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
        <p>Lista de evidências recolhidas:</p>
        <ul class="evidence-list">
          ${Object.values(grouped.automatic).flat().map(issue => {
-           const labelTags = issue.labels.map(label => {
-             const labelName = label.name;
-             let labelClass = 'label-tag';
-             
-             if (labelName.includes('auto')) {
-               labelClass += ' label-auto';
-             } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
-               labelClass += ' label-checklist';
-             } else if (labelName.toLowerCase().includes('melhoria')) {
-               labelClass += ' label-melhoria';
-             } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
-               labelClass += ' label-na';
-             } else if (labelName.toLowerCase() === 'ok') {
-               labelClass += ' label-ok';
-             } else if (labelName.toLowerCase() === 'nok') {
-               labelClass += ' label-nok';
-             } else if (labelName.match(/R \d+\.\d+/)) {
-               labelClass += ' label-requisito';
-             } else {
-               labelClass += ' label-checklist';
-             }
-             
-             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
-           }).join('');
-           
-           return `
+    const labelTags = issue.labels.map(label => {
+      const labelName = label.name;
+      let labelClass = 'label-tag';
+
+      if (labelName.includes('auto')) {
+        labelClass += ' label-auto';
+      } else if (labelName.includes('testes') && labelName.includes('usabilidade')) {
+        labelClass += ' label-checklist';
+      } else if (labelName.toLowerCase().includes('melhoria')) {
+        labelClass += ' label-melhoria';
+      } else if (labelName.toLowerCase().match(/^n[\/\.]?a$/i) || labelName.toLowerCase() === 'na') {
+        labelClass += ' label-na';
+      } else if (labelName.toLowerCase() === 'ok') {
+        labelClass += ' label-ok';
+      } else if (labelName.toLowerCase() === 'nok') {
+        labelClass += ' label-nok';
+      } else if (labelName.match(/R \d+\.\d+/)) {
+        labelClass += ' label-requisito';
+      } else {
+        labelClass += ' label-checklist';
+      }
+
+      return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
+    }).join('');
+
+    return `
              <li class="evidence-item">
-               <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+               <p><span class="visually-hidden">evidência: </span><strong>${getCleanIssueTitle(issue)}</strong></p>
                <div class="evidence-labels">${labelTags}</div>
-               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+               <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden"> - ${getCleanIssueTitle(issue)}</span> (abre no GitHub)</a></p>
              </li>
            `;
-         }).join('')}
+  }).join('')}
        </ul>
      </section>` : ''}
 
-         ${hasIssues({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}) ? `
+         ${hasIssues({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao }) ? `
      <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
        <h2 id="req-avaliacao-manual">Avaliação manual</h2>
-       <p><span class="status-${getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao})}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao}))}</span></p>
+       <p><span class="status-${getOverallStatus({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao })}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getOverallStatus({ ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao }))}</span></p>
        <p>A avaliação manual é feita por inspeção perícial dos diversos requisitos constantes da:</p>
        <ul>
          ${hasIssues(dataForCalculation.chk10) ? '<li>checklist <strong>10 aspetos críticos de acessibilidade funcional</strong>;</li>' : ''}
@@ -887,11 +943,9 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
 
   </div>
 
-  <footer class="mt-5 pt-4 border-top text-center text-muted">
-    <div class="container">
-      <p>© 2025 ARTE - Agência para a Reforma Tecnológica do Estado, I.P. Todos os Direitos Reservados.</p>
-      <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
-    </div>
+  <footer class="report-footer">
+    <p>© 2026 ARTE - Agência para a Reforma Tecnológica do Estado, I.P. Todos os Direitos Reservados.</p>
+    <p><em lang="en">GitReports v1.0</em> - relatório gerado automaticamente a partir dos <em lang="en">issues</em> do GitHub</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -899,6 +953,34 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
 </html>`;
 
   return html;
+}
+
+// Escapa caracteres HTML especiais em texto proveniente do GitHub
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Helper para extrair o título limpo de uma issue (remove prefixo "R001 - ORG - ")
+function getCleanIssueTitle(issue) {
+  if (!issue || !issue.title) return '';
+  const parts = issue.title.split(' - ');
+  const raw = parts.length >= 3 ? parts.slice(2).join(' - ') : issue.title;
+  return escapeHtml(raw);
+}
+
+// Remove tags HTML (tanto reais como codificadas) para uso em texto puro
+function plainTitle(title) {
+  if (!title) return '';
+  return title
+    .replace(/<\/?[a-z][\s\S]*?>/gi, '')        // remove tags HTML reais (e.g. <h1>)
+    .replace(/&lt;\/[a-z0-9]+&gt;/gi, '')       // remove closing encoded tags (e.g. &lt;/h1&gt; → '')
+    .replace(/&lt;([a-z0-9]+)&gt;/gi, '$1');   // opening encoded tags (e.g. &lt;h1&gt; → h1)
 }
 
 function sortRequirements(requirements) {
@@ -911,10 +993,10 @@ function sortRequirements(requirements) {
       }
       return [999, 999]; // Put non-matching requirements at the end
     };
-    
+
     const [aMajor, aMinor] = getNumbers(a);
     const [bMajor, bMinor] = getNumbers(b);
-    
+
     if (aMajor !== bMajor) {
       return aMajor - bMajor;
     }
@@ -928,24 +1010,24 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
   for (const requirement of sortedRequirements) {
     const issues = requirements[requirement];
     if (issues.length === 0) continue;
-    
+
     const overallStatus = getRequirementStatus(issues);
     const displayTitle = getRequirementTitle(requirement, checklistType);
     // Use h4 for all requirement titles to maintain proper heading hierarchy
     const headingTag = 'h4';
-    
+
     // Only add the heading if there's a title to display
     if (displayTitle) {
       html += `
-        <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${displayTitle}</${headingTag}>
+        <${headingTag} class="requirement-title" id="req-${checklistType}-${requirement.replace(/\s+/g, '-').toLowerCase()}">${plainTitle(displayTitle)}</${headingTag}>
       `;
     }
-    
+
     html += `<div class="requirement-content">
         ${(requirement !== 'declaracao') ? `<p><span class="status-${overallStatus.toLowerCase()}"><span class="sr-only">etiqueta: </span>${formatStatusForRequirementDisplay(overallStatus, issues)}</span>${overallStatus === 'ok' ? getImprovementText(issues) : ''}</p>` : ''}
         <p>Lista de evidências recolhidas:</p>
     `;
-    
+
     html += '<ul class="evidence-list">';
     // Verificar se issues é um array antes de iterar
     if (Array.isArray(issues)) {
@@ -956,7 +1038,7 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
           const labelTags = issue.labels.map(label => {
             const labelName = label.name;
             let labelClass = 'label-tag';
-            
+
             // Determine label color based on content
             if (labelName.includes('chk') || labelName.includes('web')) {
               labelClass += ' label-checklist';
@@ -981,21 +1063,21 @@ function generateRequirementsSection(requirements, checklistType = 'outras') {
             } else {
               labelClass += ' label-checklist'; // default to purple
             }
-            
+
             return `<span class="${labelClass}"><span class="sr-only">etiqueta: </span>${labelName}</span>`;
           }).join('');
-      
-            html += `
+
+          html += `
               <li class="evidence-item">
-                <p><span class="visually-hidden">evidência: </span><strong>${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</strong></p>
+                <p><span class="visually-hidden">evidência: </span><strong>${getCleanIssueTitle(issue)}</strong></p>
                 <div class="evidence-labels">${labelTags}</div>
-                <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden">${issue.title && issue.title.split(' - ').length >= 3 ? issue.title.split(' - ').slice(2).join(' - ') : issue.title}</span> (abre no GitHub)</a></p>
+                <p><a href="${issue.html_url}" class="btn btn-outline-dark btn-lg" target="_blank" rel="noopener noreferrer">Consultar detalhe da evidência<span class="visually-hidden"> - ${getCleanIssueTitle(issue)}</span> (abre no GitHub)</a></p>
               </li>
             `;
-          }
-        });
+        }
+      });
       html += '</ul>';
-    
+
       html += '</div>';
     }
   }
@@ -1007,23 +1089,23 @@ function getRequirementStatus(issues) {
   if (!Array.isArray(issues)) {
     return 'na'; // Se não for um array, retornar 'na'
   }
-  
+
   // Se não houver issues, retornar 'na'
   if (issues.length === 0) {
     return 'na';
   }
-  
+
   const statuses = issues.map(issue => issue && issue.status ? issue.status : 'NA');
-  
+
   // Se todas as issues são NA, o requisito é NA
   if (statuses.every(s => s === 'NA')) {
     return 'na';
   }
-  
+
   // Para requisitos agrupados (múltiplas issues):
   // SÓ é OK se TODAS as issues forem OK (excluindo N/A)
   const applicableStatuses = statuses.filter(s => s !== 'NA');
-  
+
   if (applicableStatuses.length === 0) {
     // Se só há N/A, já foi tratado acima
     return 'na';
@@ -1032,7 +1114,7 @@ function getRequirementStatus(issues) {
   if (applicableStatuses.every(s => s === 'OK' || s === 'melhoria')) {
     return 'ok';
   }
-  
+
   // Qualquer issue NOK torna o requisito NOK
   return 'nok';
 }
@@ -1042,16 +1124,16 @@ function getOverallStatus(section) {
 
   const requirements = Object.keys(section);
   if (requirements.length === 0) return 'na';
-  
+
   // Avaliar status por requisito agrupado, não por issue individual
   const requirementStatuses = requirements.map(req => getRequirementStatus(section[req]));
-  
+
   // Se todos os requisitos são NA, retornar 'na'
   if (requirementStatuses.every(s => s === 'na')) return 'na';
-  
+
   // Se todos os requisitos são OK ou NA (mas não só NA), e pelo menos um é OK
   if (requirementStatuses.every(s => s === 'ok' || s === 'na' || s === 'melhoria') && requirementStatuses.some(s => s === 'ok')) return 'ok';
-  
+
   // Caso contrário é NOK
   return 'nok';
 }
@@ -1059,9 +1141,9 @@ function getOverallStatus(section) {
 // Função para contar o número de melhorias em uma seção
 function countMelhorias(section) {
   if (!section) return 0;
-  
+
   let count = 0;
-  
+
   // Se section é um array (lista de issues), contar diretamente
   if (Array.isArray(section)) {
     for (const issue of section) {
@@ -1071,10 +1153,10 @@ function countMelhorias(section) {
     }
     return count;
   }
-  
+
   // Se section é um objeto (estrutura de seção), iterar pelos requisitos
   const requirements = Object.keys(section);
-  
+
   for (const req of requirements) {
     const issues = section[req];
     // Verificar se issues é um array antes de iterar
@@ -1086,7 +1168,7 @@ function countMelhorias(section) {
       }
     }
   }
-  
+
   return count;
 }
 
@@ -1130,20 +1212,20 @@ function formatStatusForDisplay(status, section) {
 function getPassStatus(section) {
   const requirements = Object.keys(section);
   if (requirements.length === 0) return 'não passa';
-  
+
   // Filtrar apenas requisitos aplicáveis (não N/A)
   const applicableRequirements = requirements.filter(req => {
     const status = getRequirementStatus(section[req]);
     return status !== 'na';
   });
-  
+
   if (applicableRequirements.length === 0) return 'não passa';
-  
+
   const passedRequirements = applicableRequirements.filter(req => {
     const status = getRequirementStatus(section[req]);
     return status === 'ok';
   }).length;
-  
+
   const percentage = (passedRequirements / applicableRequirements.length) * 100;
   return percentage > 75 ? 'passa' : 'não passa';
 }
@@ -1151,20 +1233,20 @@ function getPassStatus(section) {
 function calculateConformance(section) {
   const requirements = Object.keys(section);
   if (requirements.length === 0) return '0% (0/0)';
-  
+
   // Filtrar apenas requisitos aplicáveis (não N/A)
   const applicableRequirements = requirements.filter(req => {
     const status = getRequirementStatus(section[req]);
     return status !== 'na';
   });
-  
+
   if (applicableRequirements.length === 0) return '0% (0/0)';
-  
+
   const passedRequirements = applicableRequirements.filter(req => {
     const status = getRequirementStatus(section[req]);
     return status === 'ok';
   }).length;
-  
+
   const percentage = ((passedRequirements / applicableRequirements.length) * 100).toFixed(1);
   return `${percentage}% (${passedRequirements}/${applicableRequirements.length})`;
 }
@@ -1172,28 +1254,28 @@ function calculateConformance(section) {
 function calculateDetailedStats(section, checklistName) {
   const requirements = Object.keys(section);
   if (requirements.length === 0) return '';
-  
+
   let okCount = 0;
   let nokCount = 0;
   let naCount = 0;
-  
+
   requirements.forEach(req => {
     const status = getRequirementStatus(section[req]);
     if (status === 'ok') okCount++;
     else if (status === 'nok') nokCount++;
     else if (status === 'na') naCount++;
   });
-  
+
   const passedRequirements = okCount;
   const applicableRequirements = requirements.length - naCount; // Excluir N/A do total
-  
+
   // Se não há requisitos aplicáveis, mostrar 0%
   const percentage = applicableRequirements > 0 ? ((passedRequirements / applicableRequirements) * 100).toFixed(1) : '0.0';
 
   // Para avaliação automática, não mostrar nenhuma informação sobre requisitos
   if (checklistName === 'Avaliação automática') {
     return ``;
-    
+
   } else {
     // Para outras checklists, mostrar o nível de conformidade
     return `
@@ -1219,42 +1301,42 @@ function hasIssues(section) {
 function getOverallProjectStatus(grouped) {
   // Check if all manual checklists pass (>75%)
   const checklists = [grouped.chk10, grouped.conteudo, grouped.transacao];
-  
+
   for (const checklist of checklists) {
     if (hasIssues(checklist)) {
       const requirements = Object.keys(checklist);
-      
+
       // Filtrar apenas requisitos aplicáveis (não N/A)
       const applicableRequirements = requirements.filter(req => {
         const status = getRequirementStatus(checklist[req]);
         return status !== 'na';
       });
-      
+
       if (applicableRequirements.length === 0) continue; // Pular se não há requisitos aplicáveis
-      
+
       const passedRequirements = applicableRequirements.filter(req => {
         const status = getRequirementStatus(checklist[req]);
         return status === 'ok';
       }).length;
-      
+
       const percentage = (passedRequirements / applicableRequirements.length) * 100;
-      
+
       if (percentage <= 75) {
         return 'não passa';
       }
     }
   }
-  
+
   // Also check automatic evaluation
   if (hasIssues(grouped.automatic) && getOverallStatus(grouped.automatic) === 'nok') {
     return 'não passa';
   }
-  
+
   // Check declaration if exists
   if (hasIssues(grouped.declaracao) && getOverallStatus(grouped.declaracao) === 'nok') {
     return 'não passa';
   }
-  
+
   return 'passa';
 }
 
@@ -1339,54 +1421,57 @@ function getRequirementTitle(requirement, checklistType) {
   if (checklistType === 'chk10' && chk10Requirements[requirement]) {
     return chk10Requirements[requirement];
   }
-  
+
   if (checklistType === 'conteudo' && conteudoRequirements[requirement]) {
     return conteudoRequirements[requirement];
   }
-  
+
   if (checklistType === 'transacao' && transacaoRequirements[requirement]) {
     return transacaoRequirements[requirement];
   }
-  
+
   if (checklistType === 'automatic' && automaticRequirements[requirement]) {
     return automaticRequirements[requirement];
   }
-  
+
   // Special cases to avoid duplication
   if (checklistType === 'declaracao') {
     return 'Declaração de Acessibilidade';
   }
-  
+
   // Special case for "Outras violações" to avoid duplication with section title
   if (checklistType === 'outras' && requirement === 'Outras violações') {
     return '';
   }
-  
+
   // Special case for "Testes de usabilidade" to avoid duplication with section title
   if (checklistType === 'testesUsabilidade' && requirement === 'Testes de usabilidade') {
     return '';
   }
-  
+
   return requirement;
 }
 
 function downloadFile(content, filename) {
-  const blob = new Blob([content], {type: 'text/html'});
+  const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
+  link.href = url;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  // Revogar o URL após o download para libertar memória
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function calculateProgress(dataForCalculation) {
-  const allSections = {...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao};
+  const allSections = { ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao };
   const requirements = Object.keys(allSections);
   const totalRequirements = requirements.length;
-  
+
   if (totalRequirements === 0) return { percentage: 0, audited: 0, total: 0 };
-  
+
   let auditedRequirements = 0;
   requirements.forEach(req => {
     const status = getRequirementStatus(allSections[req]);
@@ -1394,9 +1479,9 @@ function calculateProgress(dataForCalculation) {
       auditedRequirements++;
     }
   });
-  
+
   const percentage = totalRequirements > 0 ? Math.round((auditedRequirements / totalRequirements) * 100) : 0;
-  
+
   return {
     percentage: percentage,
     audited: auditedRequirements,
