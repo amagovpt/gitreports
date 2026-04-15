@@ -130,9 +130,36 @@ async function fetchRepositories() {
 
 function sanitizeValue(value) {
   if (!value) return null;
-  const trimmed = value.trim();
-  if (trimmed.includes('{{')) return null;
-  return trimmed;
+  // Limpar espaços e remover aspas no início/fim se existirem
+  return value.trim().replace(/^["']|["']$/g, '');
+}
+
+/**
+ * Replaces placeholders like {{ page.variable }} with actual values from the extracted info
+ */
+function applyTemplates(info) {
+  if (!info) return info;
+  const result = { ...info };
+  const keys = Object.keys(result);
+
+  // We do two passes to ensure dependencies are resolved (simple implementation)
+  for (let i = 0; i < 2; i++) {
+    keys.forEach(key => {
+      if (typeof result[key] === 'string' && result[key].includes('{{')) {
+        keys.forEach(searchKey => {
+          const placeholder = `{{ page.${searchKey} }}`;
+          if (result[key].includes(placeholder)) {
+            const replacement = result[searchKey];
+            // Only replace if the replacement itself doesn't contain a template (to avoid recursion)
+            if (replacement && !replacement.includes('{{')) {
+              result[key] = result[key].split(placeholder).join(replacement);
+            }
+          }
+        });
+      }
+    });
+  }
+  return result;
 }
 
 
@@ -153,7 +180,7 @@ async function fetchReadmeInfo(repoName) {
     // Extract info from README with flexible patterns
     const dateMatch = content.match(/\*\*Data:\*\*\s*(\d{1,2} de \w+ de \d{4})|Data:\s*(\d{1,2} de \w+ de \d{4})|(\d{1,2} de \w+ de \d{4})/);
     // Extract organization from header (# title)
-    const organizationMatch = content.match(/^#\s*(.+)$/m);
+    const organizationMatchFull = content.match(/^#\s*(.+)$/m);
 
     // Extract URL
     const urlMatch = content.match(/[-*]\s*URL:\s*([^\n\r]+)/i);
@@ -178,16 +205,42 @@ async function fetchReadmeInfo(repoName) {
     const lastUpdateMatch = content.match(/[-*]\s*Última atualização:\s*([^\n\r]+)/i) ||
       content.match(/Última atualização:\s*([^\n\r]+)/i);
 
+    // Support new metadata format (key: "value" # comment)
+    const websiteMatch = content.match(/^website[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const dateMatchNew = content.match(/^date[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const uriMatch = content.match(/^uri[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const ownerMatchNew = content.match(/^owner[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const sealMatchNew = content.match(/^seal[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const validityMatch = content.match(/^validity[:\s]+["']?([^"'\n\r#]+)["']?/m);
+    const statusMatch = content.match(/^status[:\s]+["']?([^"'\n\r#]+)["']?/m);
+
+    // Hierarchy of extraction: prioritize new YAML-like format
+    let organization = sanitizeValue(websiteMatch ? websiteMatch[1] : (organizationMatchFull ? organizationMatchFull[1] : null));
+    
+    // If the captured organization looks like a placeholder, and we have a better one from frontmatter, use it
+    if (organization && organization.includes('{{') && websiteMatch) {
+      organization = sanitizeValue(websiteMatch[1]);
+    }
+
     const extractedInfo = {
-      date: dateMatch ? sanitizeValue(dateMatch[1] || dateMatch[2] || dateMatch[3]) : null,
-      organization: sanitizeValue(organizationMatch ? organizationMatch[1] : null),
-      url: sanitizeValue(urlMatch ? urlMatch[1] : null),
-      owner: sanitizeValue(ownerMatch ? ownerMatch[1] : null),
-      sealType: sanitizeValue(sealMatch ? sealMatch[1] : null),
+      date: sanitizeValue(dateMatchNew ? dateMatchNew[1] : (dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3]) : null)),
+      organization: organization,
+      url: sanitizeValue(uriMatch ? uriMatch[1] : (urlMatch ? urlMatch[1] : null)),
+      owner: sanitizeValue(ownerMatchNew ? ownerMatchNew[1] : (ownerMatch ? ownerMatch[1] : null)),
+      sealType: sanitizeValue(sealMatchNew ? sealMatchNew[1] : (sealMatch ? sealMatch[1] : null)),
       creationDate: sanitizeValue(creationDateMatch ? creationDateMatch[1] : null),
-      lastUpdate: sanitizeValue(lastUpdateMatch ? lastUpdateMatch[1] : null)
+      lastUpdate: sanitizeValue(lastUpdateMatch ? lastUpdateMatch[1] : null),
+      validity: sanitizeValue(validityMatch ? validityMatch[1] : null),
+      status: sanitizeValue(statusMatch ? statusMatch[1] : null)
     };
-    return extractedInfo;
+
+    // Aliases para placeholders de templates
+    extractedInfo.website = extractedInfo.organization;
+    extractedInfo.uri = extractedInfo.url;
+    extractedInfo.seal = extractedInfo.sealType;
+
+    // Apply templates to handle cases like "{{ page.xxx }}"
+    return applyTemplates(extractedInfo);
   } catch (e) {
     console.warn('Failed to fetch README:', e);
     return null;
