@@ -128,6 +128,14 @@ async function fetchRepositories() {
 
 
 
+function sanitizeValue(value) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.includes('{{')) return null;
+  return trimmed;
+}
+
+
 async function fetchReadmeInfo(repoName) {
   try {
     const url = `https://api.github.com/repos/${GITHUB_OWNER}/${repoName}/readme`;
@@ -171,13 +179,13 @@ async function fetchReadmeInfo(repoName) {
       content.match(/Última atualização:\s*([^\n\r]+)/i);
 
     const extractedInfo = {
-      date: dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3]) : null,
-      organization: organizationMatch ? organizationMatch[1].trim() : null,
-      url: urlMatch ? urlMatch[1].trim() : null,
-      owner: ownerMatch ? ownerMatch[1].trim() : null,
-      sealType: sealMatch ? sealMatch[1].trim() : null,
-      creationDate: creationDateMatch ? creationDateMatch[1].trim() : null,
-      lastUpdate: lastUpdateMatch ? lastUpdateMatch[1].trim() : null
+      date: dateMatch ? sanitizeValue(dateMatch[1] || dateMatch[2] || dateMatch[3]) : null,
+      organization: sanitizeValue(organizationMatch ? organizationMatch[1] : null),
+      url: sanitizeValue(urlMatch ? urlMatch[1] : null),
+      owner: sanitizeValue(ownerMatch ? ownerMatch[1] : null),
+      sealType: sanitizeValue(sealMatch ? sealMatch[1] : null),
+      creationDate: sanitizeValue(creationDateMatch ? creationDateMatch[1] : null),
+      lastUpdate: sanitizeValue(lastUpdateMatch ? lastUpdateMatch[1] : null)
     };
     return extractedInfo;
   } catch (e) {
@@ -586,8 +594,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
     // INTRODUCAO
     console.log('Generating introduction...');
     try {
-      const overallStatus = getOverallProjectStatus(grouped);
-      const manualStatus = getOverallStatus({ ...safeData.chk10, ...safeData.conteudo, ...safeData.transacao });
+      const overallStatus = getOverallProjectStatus(safeData);
       const autoStatus = getOverallStatus(safeData.automatic);
 
       let introHtml = `
@@ -600,7 +607,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
         <thead><tr><th>Tipo de avaliação</th><th>Estado</th></tr></thead>
         <tbody>
           <tr><td>Avaliação Automática</td><td><span class="status-${autoStatus}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(autoStatus)}</span></td></tr>
-          <tr><td>Avaliação Manual</td><td><span class="status-${manualStatus}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(manualStatus)}</span>${manualStatus === 'ok' ? getImprovementText({ ...safeData.chk10, ...safeData.conteudo, ...safeData.transacao }) : ''}</td></tr>
+          <tr><td>Avaliação Manual</td><td><span class="status-${getManualOverallStatus(safeData)}"><span class="sr-only">etiqueta: </span>${formatStatusForChecklistDisplay(getManualOverallStatus(safeData))}</span>${getManualOverallStatus(safeData) === 'ok' ? getImprovementText({ ...safeData.chk10, ...safeData.conteudo, ...safeData.transacao }) : ''}</td></tr>
         </tbody>
       </table>`;
 
@@ -720,7 +727,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
     if (hasIssues({ ...safeData.chk10, ...safeData.conteudo, ...safeData.transacao })) {
       console.log('Generating manual evaluation section...');
       try {
-        const manualStatus = getOverallStatus({ ...safeData.chk10, ...safeData.conteudo, ...safeData.transacao });
+        const manualStatus = getManualOverallStatus(safeData);
         let manualHtml = `
     <section id="avaliacao-manual" class="mb-5 mt-5 avaliacao-manual-section">
       <h2>Avaliação manual</h2>
@@ -999,6 +1006,21 @@ function getOverallStatus(section) {
   return 'nok';
 }
 
+// Estado global da avaliação manual (chk10 + conteudo + transacao) baseado na regra de ≥75% por checklist
+// Usa a mesma lógica de getOverallProjectStatus/getPassStatus em vez de exigir 100% de requisitos OK
+function getManualOverallStatus(data) {
+  const checklists = [data.chk10, data.conteudo, data.transacao];
+  let hasAtLeastOne = false;
+
+  for (const checklist of checklists) {
+    if (!hasIssues(checklist)) continue;
+    hasAtLeastOne = true;
+    if (getPassStatus(checklist) !== 'passa') return 'nok';
+  }
+
+  return hasAtLeastOne ? 'ok' : 'na';
+}
+
 // Função para contar o número de melhorias em uma seção
 function countMelhorias(section) {
   if (!section) return 0;
@@ -1088,7 +1110,7 @@ function getPassStatus(section) {
   }).length;
 
   const percentage = (passedRequirements / applicableRequirements.length) * 100;
-  return percentage > 75 ? 'passa' : 'não passa';
+  return percentage >= 75 ? 'passa' : 'não passa';
 }
 
 function calculateConformance(section) {
@@ -1160,7 +1182,7 @@ function hasIssues(section) {
 }
 
 function getOverallProjectStatus(grouped) {
-  // Check if all manual checklists pass (>75%)
+  // O resultado passa/não passa é determinado apenas pelas 3 checklists manuais (threshold ≥75%)
   const checklists = [grouped.chk10, grouped.conteudo, grouped.transacao];
 
   for (const checklist of checklists) {
@@ -1182,20 +1204,10 @@ function getOverallProjectStatus(grouped) {
 
       const percentage = (passedRequirements / applicableRequirements.length) * 100;
 
-      if (percentage <= 75) {
+      if (percentage < 75) {
         return 'não passa';
       }
     }
-  }
-
-  // Also check automatic evaluation
-  if (hasIssues(grouped.automatic) && getOverallStatus(grouped.automatic) === 'nok') {
-    return 'não passa';
-  }
-
-  // Check declaration if exists
-  if (hasIssues(grouped.declaracao) && getOverallStatus(grouped.declaracao) === 'nok') {
-    return 'não passa';
   }
 
   return 'passa';
@@ -1445,21 +1457,25 @@ function processIssueContent(issue) {
 
 
 function calculateProgress(dataForCalculation) {
-  const allSections = { ...dataForCalculation.chk10, ...dataForCalculation.conteudo, ...dataForCalculation.transacao };
-  const requirements = Object.keys(allSections);
-  const totalRequirements = requirements.length;
+  // Totais fixos de requisitos por checklist (conforme definição do Selo)
+  const TOTALS = { chk10: 27, conteudo: 17, transacao: 13 };
 
-  if (totalRequirements === 0) return { percentage: 0, audited: 0, total: 0 };
-
+  let totalRequirements = 0;
   let auditedRequirements = 0;
-  requirements.forEach(req => {
-    const status = getRequirementStatus(allSections[req]);
-    if (status !== 'na') {
-      auditedRequirements++;
+
+  // Para cada checklist com dados, somar ao total fixo e contar auditados
+  ['chk10', 'conteudo', 'transacao'].forEach(section => {
+    if (hasIssues(dataForCalculation[section])) {
+      totalRequirements += TOTALS[section];
+      // Todos os requisitos presentes nos dados foram auditados
+      // (N/A é um resultado válido de auditoria)
+      auditedRequirements += Object.keys(dataForCalculation[section]).length;
     }
   });
 
-  const percentage = totalRequirements > 0 ? Math.round((auditedRequirements / totalRequirements) * 100) : 0;
+  if (totalRequirements === 0) return { percentage: 0, audited: 0, total: 0 };
+
+  const percentage = Math.round((auditedRequirements / totalRequirements) * 100);
 
   return {
     percentage: percentage,
