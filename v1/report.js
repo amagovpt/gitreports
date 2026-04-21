@@ -727,7 +727,7 @@ function generateReportHTML(grouped, repoName, readmeInfo = null, groupedForCalc
   <a href="#conteudo-principal" class="skip-link visually-hidden-focusable">Saltar para o conteúdo principal</a>
   <div class="container mt-4" id="conteudo-principal">
     <header class="mb-4">
-      <h1>Relatório Avaliação da Candidatura da ${organization}</h1>
+      <h1>Relatório Avaliação da <br> Candidatura da ${organization}</h1>
     </header>
 
     <section class="mb-4">
